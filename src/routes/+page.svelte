@@ -21,6 +21,7 @@
 		gap = 3,
 		cols = 3,
 		rows = 3;
+	let showLayout = true;
 	let showCrop = true;
 	let nameSize = 12; // pt
 	let nameBandHeight = 16; // mm
@@ -300,9 +301,12 @@
 	<div class="left">
 		<button class="btn" on:click={makePdf}>Make PDF</button>
 		<button class="btn ghost" on:click={clearAll}>Clear all</button>
+		<button class="btn" on:click={() => (showLayout = !showLayout)}>
+			{showLayout ? 'Hide' : 'Layout Settings'}
+		</button>
 	</div>
 
-	<div class="grow" />
+	<div class="grow"></div>
 
 	<div class="controls">
 		<label class="field">
@@ -342,135 +346,170 @@
 			Add Card
 		</button>
 	</div>
-
-	<div class="layout">
-		<div class="nf">
-			<label class="lbl">Card width (mm)</label>
-			<input
-				type="number"
-				value={cardW}
-				on:input={(e) => setNum(e, (v) => (cardW = clamp(v, 40, 80)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Card height (mm)</label>
-			<input
-				type="number"
-				value={cardH}
-				on:input={(e) => setNum(e, (v) => (cardH = clamp(v, 60, 110)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Gap (mm)</label>
-			<input
-				type="number"
-				value={gap}
-				on:input={(e) => setNum(e, (v) => (gap = clamp(v, 0, 10)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Columns</label>
-			<input
-				type="number"
-				value={cols}
-				on:input={(e) => setNum(e, (v) => (cols = clamp(v, 1, 4)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Rows</label>
-			<input
-				type="number"
-				value={rows}
-				on:input={(e) => setNum(e, (v) => (rows = clamp(v, 1, 5)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Name band height (mm)</label>
-			<input
-				type="number"
-				value={nameBandHeight}
-				on:input={(e) => setNum(e, (v) => (nameBandHeight = clamp(v, 8, 30)))}
-			/>
-		</div>
-		<div class="nf">
-			<label class="lbl">Name font size (pt)</label>
-			<input
-				type="number"
-				value={nameSize}
-				on:input={(e) => setNum(e, (v) => (nameSize = clamp(v, 8, 28)))}
-			/>
-		</div>
-
-		<label class="check"
-			><input type="checkbox" bind:checked={showCrop} /> <span>Crop marks</span></label
-		>
-
-		<label class="select">
-			<span>Image fit</span>
-			<select bind:value={fitMode}
-				><option value="cover">Cover</option><option value="contain">Contain</option></select
-			>
-		</label>
-
-		<label class="check"
-			><input type="checkbox" bind:checked={generateBacks} /> <span>Generate backs</span></label
-		>
-		<label class="check"
-			><input type="checkbox" bind:checked={useParchment} /> <span>Fantasy paper</span></label
-		>
-
-		<label class="field">
-			<span>Parchment intensity</span>
-			<input type="range" min="0" max="1" step="0.05" bind:value={parchmentIntensity} />
-		</label>
-
-		<label class="field"
-			><span>Cover image URL (optional)</span>
-			<input bind:value={coverUrl} placeholder="https://.../fantasy-cover.png" />
-		</label>
-
-		<label class="field"
-			><span>Mookmania font URL (.woff2)</span>
-			<input bind:value={mookUrl} placeholder="https://.../Mookmania.woff2" />
-		</label>
-
-		<label class="check"
-			><input type="checkbox" bind:checked={removeBgEnabled} />
-			<span>Auto remove image background</span></label
-		>
-
-		{#if removeBgEnabled}
-			<label class="field">
-				<span>BG color (for chroma key)</span>
-				<input type="color" bind:value={bgColor} />
-			</label>
-			<div class="nf">
-				<label class="lbl">Tolerance (0-255)</label>
-				<input
-					type="number"
-					value={tolerance}
-					on:input={(e) => setNum(e, (v) => (tolerance = clamp(v, 0, 255)))}
-				/>
-			</div>
-			<button class="btn" on:click={applyRemovalToPreview} disabled={!imageDataUrl}
-				>Apply to preview</button
-			>
-			<label class="check"
-				><input type="checkbox" bind:checked={autoRemoveOnAdd} />
-				<span>Apply when adding cards</span></label
-			>
-		{/if}
-
-		<div class="padinfo">
-			A4 padding ≈ {sheetPadding.padX.toFixed(1)}mm × {sheetPadding.padY.toFixed(1)}mm
-		</div>
-	</div>
 </div>
 
 <!-- WORKSPACE -->
+
 <div class="workspace">
-	<!-- Printable region -->
+	<!-- Left column: layout controls + printable region -->
 	<div class="leftcol" id="print-area">
+		{#if showLayout}
+			<div class="layout-panel">
+				<div class="layout">
+					<div class="nf">
+						<label class="lbl"
+							>Card width (mm)
+							<input
+								type="number"
+								value={cardW}
+								on:input={(e) => setNum(e, (v) => (cardW = clamp(v, 40, 80)))}
+							/>
+						</label>
+					</div>
+
+					<div class="nf">
+						<label class="lbl"
+							>Card height (mm)
+							<input
+								type="number"
+								value={cardH}
+								on:input={(e) => setNum(e, (v) => (cardH = clamp(v, 60, 110)))}
+							/>
+						</label>
+					</div>
+					<div class="nf">
+						<label class="lbl"
+							>Gap (mm)
+							<input
+								type="number"
+								value={gap}
+								on:input={(e) => setNum(e, (v) => (gap = clamp(v, 0, 10)))}
+							/>
+						</label>
+					</div>
+					<div class="nf">
+						<label class="lbl"
+							>Columns
+							<input
+								type="number"
+								value={cols}
+								on:input={(e) => setNum(e, (v) => (cols = clamp(v, 1, 4)))}
+							/>
+						</label>
+					</div>
+					<div class="nf">
+						<label class="lbl"
+							>Rows
+							<input
+								type="number"
+								value={rows}
+								on:input={(e) => setNum(e, (v) => (rows = clamp(v, 1, 5)))}
+							/>
+						</label>
+					</div>
+					<div class="nf">
+						<label class="lbl"
+							>Name band height (mm)
+							<input
+								type="number"
+								value={nameBandHeight}
+								on:input={(e) => setNum(e, (v) => (nameBandHeight = clamp(v, 8, 30)))}
+							/>
+						</label>
+					</div>
+					<div class="nf">
+						<label class="lbl"
+							>Name font size (pt)
+							<input
+								type="number"
+								value={nameSize}
+								on:input={(e) => setNum(e, (v) => (nameSize = clamp(v, 8, 28)))}
+							/>
+						</label>
+					</div>
+
+					<label class="check"
+						><input type="checkbox" bind:checked={showCrop} /> <span>Crop marks</span></label
+					>
+
+					<label class="select">
+						<span>Image fit</span>
+						<select bind:value={fitMode}
+							><option value="cover">Cover</option><option value="contain">Contain</option></select
+						>
+					</label>
+
+					<label class="check"
+						><input type="checkbox" bind:checked={generateBacks} />
+						<span>Generate backs</span></label
+					>
+					<label class="check"
+						><input type="checkbox" bind:checked={useParchment} /> <span>Fantasy paper</span></label
+					>
+
+					<label class="field"
+						><span>Parchment intensity</span><input
+							type="range"
+							min="0"
+							max="1"
+							step="0.05"
+							bind:value={parchmentIntensity}
+						/></label
+					>
+
+					<label class="field"
+						><span>Cover image URL (optional)</span><input
+							bind:value={coverUrl}
+							placeholder="https://.../fantasy-cover.png"
+						/></label
+					>
+
+					<label class="field"
+						><span>Mookmania font URL (.woff2)</span><input
+							bind:value={mookUrl}
+							placeholder="https://.../Mookmania.woff2"
+						/></label
+					>
+
+					<label class="check"
+						><input type="checkbox" bind:checked={removeBgEnabled} />
+						<span>Auto remove image background</span></label
+					>
+
+					{#if removeBgEnabled}
+						<label class="field"
+							><span>BG color (for chroma key)</span><input
+								type="color"
+								bind:value={bgColor}
+							/></label
+						>
+						<div class="nf">
+							<label class="lbl"
+								>Tolerance (0-255)<input
+									type="number"
+									value={tolerance}
+									on:input={(e) => setNum(e, (v) => (tolerance = clamp(v, 0, 255)))}
+								/></label
+							>
+						</div>
+						<button class="btn" on:click={applyRemovalToPreview} disabled={!imageDataUrl}
+							>Apply to preview</button
+						>
+						<label class="check"
+							><input type="checkbox" bind:checked={autoRemoveOnAdd} />
+							<span>Apply when adding cards</span></label
+						>
+					{/if}
+
+					<div class="padinfo">
+						A4 padding ≈ {sheetPadding.padX.toFixed(1)}mm × {sheetPadding.padY.toFixed(1)}mm
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Printable region follows -->
+
 		<!-- FRONT SHEETS -->
 		{#each pagesFront as page, idx (idx)}
 			<div class="sheet-wrap">
@@ -571,11 +610,14 @@
 									class="parch"
 									style="background:{parchmentCSS(parchmentIntensity)};"
 								></div>{/if}
-							{#if previewCard.img}<img
+							{#if previewCard.img}
+								<img
 									class="art"
 									src={previewCard.img}
+									alt={previewCard.name || 'Card preview image'}
 									style="object-fit:{fitMode}"
-								/>{/if}
+								/>
+							{/if}
 							<div
 								class="band"
 								style="height:{mm(nameBandHeight)};background:{previewCard.img
@@ -831,7 +873,19 @@
 	}
 	.leftcol {
 		display: grid;
-		gap: 24px;
+		gap: 16px;
+	}
+
+	.layout-panel {
+		background: white;
+		border: 1px solid #e5e7eb;
+		padding: 12px;
+		border-radius: 12px;
+		box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+		display: block;
+	}
+	.layout-panel .layout {
+		gap: 8px;
 	}
 	.rightcol {
 		position: sticky;

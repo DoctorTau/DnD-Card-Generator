@@ -6,13 +6,13 @@
 	<svg class="crop tl" viewBox="0 0 5 5"
 		><line x1="0" y1="1" x2="5" y2="1" /><line x1="1" y1="0" x2="1" y2="5" /></svg
 	>
-	<svg class="crop tr" viewBox="0 0 5 5"
-		><line x1="0" y1="1" x2="5" y2="1" /><line x1="4" y1="0" x2="4" y2="5" /></svg
+	<svg class="crop tr" viewBox="0 0 5 5" style="transform: rotate(0deg)">
+		<line x1="0" y1="1" x2="5" y2="1" /><line x1="4" y1="0" x2="4" y2="5" /></svg
 	>
-	<svg class="crop bl" viewBox="0 0 5 5"
+	<svg class="crop bl" viewBox="0 0 5 5" style="transform: rotate(0deg);"
 		><line x1="0" y1="4" x2="5" y2="4" /><line x1="1" y1="0" x2="1" y2="5" /></svg
 	>
-	<svg class="crop br" viewBox="0 0 5 5"
+	<svg class="crop br" viewBox="0 0 5 5" style="transform: rotate(0deg);"
 		><line x1="0" y1="4" x2="5" y2="4" /><line x1="4" y1="0" x2="4" y2="5" /></svg
 	>
 {/if}
