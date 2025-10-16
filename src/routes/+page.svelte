@@ -2,6 +2,9 @@
 	import { onMount } from 'svelte';
 	import DropZone from '$lib/components/common/DropZone.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
+	import TopBar from '$lib/components/TopBar.svelte';
+	import LayoutSettings from '$lib/components/LayoutSettings.svelte';
+	import CardPreview from '$lib/components/CardPreview.svelte';
 	import { browser } from '$app/environment';
 
 	// ---------- Types ----------
@@ -14,8 +17,8 @@
 	let cards: Card[] = [];
 
 	// Layout
-	let cardW = 63,
-		cardH = 88,
+	let cardW = 63.5,
+		cardH = 88.9,
 		gap = 3,
 		cols = 3,
 		rows = 3;
@@ -285,65 +288,19 @@
 </svelte:head>
 
 <!-- ========== UI ========== -->
-<div class="topbar">
-	<div class="left">
-		<button class="btn" on:click={makePdf}>Make PDF</button>
-		<button class="btn ghost" on:click={clearAll}>Clear all</button>
-		<button class="btn" on:click={() => (showLayout = !showLayout)}>
-			{showLayout ? 'Hide' : 'Layout Settings'}
-		</button>
-	</div>
-
-	<div class="grow"></div>
-
-	<div class="controls">
-		<label class="field">
-			<span>Name</span>
-			<input bind:value={name} placeholder="e.g., Sunforged Amulet / Lady Seraphine" />
-		</label>
-
-		<label class="field">
-			<span>Image</span>
-
-			<div style="display:flex;align-items:center;gap:12px">
-				<div style="flex:1;min-width:200px;min-height:120px;display:flex;align-items:center">
-					<!-- Drag & drop zone -->
-					<DropZone on:file={(e) => handleFile(e.detail.file)} />
-				</div>
-
-				{#if imageDataUrl}
-					<div class="thumbRow" style="align-items:center">
-						<img
-							src={imageDataUrl}
-							alt="preview"
-							class="card-thumb"
-							style="height: 120px;width: 100%;"
-						/>
-						<button class="btn small ghost" on:click={() => (imageDataUrl = null)}>Remove</button>
-					</div>
-				{/if}
-			</div>
-		</label>
-
-		<label class="field">
-			<span>Description (back)</span>
-			<textarea bind:value={desc} on:input={limitDesc} placeholder="Charges: 3. As an action..."
-			></textarea>
-			<div class="counter" data-danger={desc.length >= DESC_LIMIT}>
-				{desc.length}/{DESC_LIMIT}
-				{desc.length >= DESC_LIMIT ? '— limit reached' : ''}
-			</div>
-		</label>
-
-		<button
-			class="btn primary"
-			on:click={addCard}
-			disabled={!imageDataUrl || !name.trim() || desc.length > DESC_LIMIT}
-		>
-			Add Card
-		</button>
-	</div>
-</div>
+<TopBar
+	bind:name
+	bind:desc
+	bind:imageDataUrl
+	bind:showLayout
+	onMakePdf={makePdf}
+	onClearAll={clearAll}
+	onToggleLayout={() => (showLayout = !showLayout)}
+	onAddCard={addCard}
+	onRemoveImage={() => (imageDataUrl = null)}
+	onLimitDesc={limitDesc}
+	onHandleFile={handleFile}
+/>
 
 <!-- WORKSPACE -->
 
@@ -351,158 +308,30 @@
 	<!-- Left column: layout controls + printable region -->
 	<div class="leftcol" id="print-area">
 		{#if showLayout}
-			<div class="layout-panel">
-				<div class="layout">
-					<div class="nf">
-						<label class="lbl"
-							>Card width (mm)
-							<input
-								type="number"
-								value={cardW}
-								on:input={(e) => setNum(e, (v) => (cardW = clamp(v, 40, 80)))}
-							/>
-						</label>
-					</div>
-
-					<div class="nf">
-						<label class="lbl"
-							>Card height (mm)
-							<input
-								type="number"
-								value={cardH}
-								on:input={(e) => setNum(e, (v) => (cardH = clamp(v, 60, 110)))}
-							/>
-						</label>
-					</div>
-					<div class="nf">
-						<label class="lbl"
-							>Gap (mm)
-							<input
-								type="number"
-								value={gap}
-								on:input={(e) => setNum(e, (v) => (gap = clamp(v, 0, 10)))}
-							/>
-						</label>
-					</div>
-					<div class="nf">
-						<label class="lbl"
-							>Columns
-							<input
-								type="number"
-								value={cols}
-								on:input={(e) => setNum(e, (v) => (cols = clamp(v, 1, 4)))}
-							/>
-						</label>
-					</div>
-					<div class="nf">
-						<label class="lbl"
-							>Rows
-							<input
-								type="number"
-								value={rows}
-								on:input={(e) => setNum(e, (v) => (rows = clamp(v, 1, 5)))}
-							/>
-						</label>
-					</div>
-					<div class="nf">
-						<label class="lbl"
-							>Name band height (mm)
-							<input
-								type="number"
-								value={nameBandHeight}
-								on:input={(e) => setNum(e, (v) => (nameBandHeight = clamp(v, 8, 30)))}
-							/>
-						</label>
-					</div>
-					<div class="nf">
-						<label class="lbl"
-							>Name font size (pt)
-							<input
-								type="number"
-								value={nameSize}
-								on:input={(e) => setNum(e, (v) => (nameSize = clamp(v, 8, 28)))}
-							/>
-						</label>
-					</div>
-
-					<label class="check"
-						><input type="checkbox" bind:checked={showCrop} /> <span>Crop marks</span></label
-					>
-
-					<label class="select">
-						<span>Image fit</span>
-						<select bind:value={fitMode}
-							><option value="cover">Cover</option><option value="contain">Contain</option></select
-						>
-					</label>
-
-					<label class="check"
-						><input type="checkbox" bind:checked={generateBacks} />
-						<span>Generate backs</span></label
-					>
-					<label class="check"
-						><input type="checkbox" bind:checked={useParchment} /> <span>Fantasy paper</span></label
-					>
-
-					<label class="field"
-						><span>Parchment intensity</span><input
-							type="range"
-							min="0"
-							max="1"
-							step="0.05"
-							bind:value={parchmentIntensity}
-						/></label
-					>
-
-					<label class="field"
-						><span>Cover image URL (optional)</span><input
-							bind:value={coverUrl}
-							placeholder="https://.../fantasy-cover.png"
-						/></label
-					>
-
-					<label class="field"
-						><span>Mookmania font URL (.woff2)</span><input
-							bind:value={mookUrl}
-							placeholder="https://.../Mookmania.woff2"
-						/></label
-					>
-
-					<label class="check"
-						><input type="checkbox" bind:checked={removeBgEnabled} />
-						<span>Auto remove image background</span></label
-					>
-
-					{#if removeBgEnabled}
-						<label class="field"
-							><span>BG color (for chroma key)</span><input
-								type="color"
-								bind:value={bgColor}
-							/></label
-						>
-						<div class="nf">
-							<label class="lbl"
-								>Tolerance (0-255)<input
-									type="number"
-									value={tolerance}
-									on:input={(e) => setNum(e, (v) => (tolerance = clamp(v, 0, 255)))}
-								/></label
-							>
-						</div>
-						<button class="btn" on:click={applyRemovalToPreview} disabled={!imageDataUrl}
-							>Apply to preview</button
-						>
-						<label class="check"
-							><input type="checkbox" bind:checked={autoRemoveOnAdd} />
-							<span>Apply when adding cards</span></label
-						>
-					{/if}
-
-					<div class="padinfo">
-						A4 padding ≈ {sheetPadding.padX.toFixed(1)}mm × {sheetPadding.padY.toFixed(1)}mm
-					</div>
-				</div>
-			</div>
+			<LayoutSettings
+				bind:cardW
+				bind:cardH
+				bind:gap
+				bind:cols
+				bind:rows
+				bind:nameBandHeight
+				bind:nameSize
+				bind:showCrop
+				bind:fitMode
+				bind:generateBacks
+				bind:useParchment
+				bind:parchmentIntensity
+				bind:coverUrl
+				bind:mookUrl
+				bind:removeBgEnabled
+				bind:bgColor
+				bind:tolerance
+				bind:autoRemoveOnAdd
+				bind:imageDataUrl
+				sheetPaddingX={sheetPadding.padX}
+				sheetPaddingY={sheetPadding.padY}
+				onApplyRemovalToPreview={applyRemovalToPreview}
+			/>
 		{/if}
 
 		<!-- Printable region follows -->
@@ -571,63 +400,20 @@
 				</div>
 			</div>
 			<div class="pv">
-				<div class="preview-wrap" style="width:{cardW}mm;height:{cardH}mm;transform:scale(0.8);">
-					{#if previewMode === 'front'}
-						<div class="card" style="width:{mm(cardW)};height:{mm(cardH)};">
-							{#if useParchment}<div
-									class="parch"
-									style="background:{parchmentCSS(parchmentIntensity)};"
-								></div>{/if}
-							{#if previewCard.img}
-								<img
-									class="art"
-									src={previewCard.img}
-									alt={previewCard.name || 'Card preview image'}
-									style="object-fit:{fitMode}"
-								/>
-							{/if}
-							<div
-								class="band"
-								style="height:{mm(nameBandHeight)};background:{previewCard.img
-									? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
-									: 'rgba(0,0,0,.06)'}"
-							>
-								<div class="title" style="font-size:{nameSize}pt" title={previewCard.name}>
-									{previewCard.name}
-								</div>
-							</div>
-						</div>
-					{:else}
-						<div class="card" style="width:{mm(cardW)};height:{mm(cardH)};">
-							{#if useParchment}<div
-									class="parch"
-									style="background:{parchmentCSS(parchmentIntensity)};"
-								></div>{/if}
-							{#if previewCard.desc}
-								<div class="back">
-									<div class="backTitle" style="font-size:{nameSize}pt">{previewCard.name}</div>
-									<div class="hr"></div>
-									<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
-										{previewCard.desc}
-									</div>
-								</div>
-							{:else}
-								<div class="cover-root">
-									{#if coverUrl}
-										<img class="bg" alt="cover" src={coverUrl} />
-									{:else}
-										<div class="bg" style="background:{fancyCoverFallback()}"></div>
-									{/if}
-									<div class="frame"></div>
-									<div class="gem"></div>
-									<div class="ribbon">
-										<div class="title" title={previewCard.name}>{previewCard.name}</div>
-									</div>
-								</div>
-							{/if}
-						</div>
-					{/if}
-				</div>
+				<CardPreview
+					mode={previewMode}
+					card={previewCard}
+					{cardW}
+					{cardH}
+					{nameBandHeight}
+					{nameSize}
+					showCrop={false}
+					{fitMode}
+					{useParchment}
+					{parchmentIntensity}
+					{mookUrl}
+					{coverUrl}
+				/>
 			</div>
 			<div class="muted">This is just a preview — the card is added after “Add Card”.</div>
 		</div>
@@ -664,13 +450,13 @@
 </div>
 
 <style>
-	:root {
+	:global(:root) {
 		color-scheme: light;
 	}
-	* {
+	:global(*) {
 		box-sizing: border-box;
 	}
-	body {
+	:global(body) {
 		margin: 0;
 		font-family:
 			system-ui,
@@ -682,11 +468,10 @@
 		background: radial-gradient(120% 100% at 50% -20%, #fff 0%, #f8fafc 60%, #eef2f7 100%);
 	}
 
-	/* Hide “screen-only” bits while exporting to PDF (html2canvas time) */
-	:root[data-exporting='true'] .topbar,
+	/* Hide "screen-only" bits while exporting to PDF (html2canvas time) */
+	:root[data-exporting='true'] :global(.topbar),
 	:root[data-exporting='true'] .rightcol,
-	:root[data-exporting='true'] .tips,
-	:root[data-exporting='true'] .label {
+	:root[data-exporting='true'] .tips {
 		display: none !important;
 	}
 
@@ -698,136 +483,10 @@
 		.noprint {
 			display: none !important;
 		}
-		body {
+		:global(body) {
 			-webkit-print-color-adjust: exact;
 			print-color-adjust: exact;
 		}
-		.a4 {
-			box-shadow: none !important;
-			border: none !important;
-		}
-	}
-
-	.btn {
-		border: 1px solid #e5e7eb;
-		background: white;
-		border-radius: 14px;
-		padding: 8px 14px;
-		font-size: 14px;
-		cursor: pointer;
-	}
-	.btn:hover {
-		background: #f8fafc;
-	}
-	.btn.primary {
-		background: #0f172a;
-		color: white;
-		border-color: #0f172a;
-	}
-	.btn.primary:hover {
-		opacity: 0.95;
-	}
-	.btn.ghost {
-		background: transparent;
-	}
-	.btn.small {
-		padding: 6px 10px;
-		font-size: 12px;
-	}
-
-	.card-thumb {
-		width: 48px;
-		height: 64px;
-		object-fit: cover;
-		border-radius: 8px;
-		border: 1px solid #e5e7eb;
-	}
-
-	.topbar {
-		position: sticky;
-		top: 0;
-		z-index: 20;
-		display: grid;
-		grid-template-columns: auto 1fr auto;
-		gap: 12px;
-		padding: 10px 16px;
-		border-bottom: 1px solid #e5e7eb;
-		backdrop-filter: blur(6px);
-		background: rgba(255, 255, 255, 0.8);
-	}
-	.left {
-		display: flex;
-		gap: 8px;
-	}
-	.controls {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-		align-items: end;
-	}
-	.layout {
-		grid-column: 1 / -1;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-		align-items: end;
-	}
-	.grow {
-		flex: 1;
-	}
-
-	.field,
-	.check,
-	.select {
-		display: flex;
-		flex-direction: column;
-		font-size: 12px;
-	}
-	.field input,
-	.field textarea,
-	.select select {
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		padding: 8px 10px;
-		font-size: 14px;
-		min-width: 200px;
-	}
-	.field textarea {
-		width: 320px;
-		height: 96px;
-	}
-	.check {
-		flex-direction: row;
-		gap: 8px;
-		align-items: center;
-	}
-	.counter {
-		margin-top: 4px;
-		color: #64748b;
-		font-size: 12px;
-	}
-	.counter[data-danger='true'] {
-		color: #b91c1c;
-	}
-	.padinfo {
-		margin-left: auto;
-		font-size: 12px;
-		color: #64748b;
-	}
-
-	.nf {
-		display: flex;
-		flex-direction: column;
-	}
-	.nf .lbl {
-		font-size: 12px;
-	}
-	.nf input {
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		padding: 8px 10px;
-		font-size: 14px;
-		width: 120px;
 	}
 
 	.workspace {
@@ -843,201 +502,10 @@
 		display: grid;
 		gap: 16px;
 	}
-
-	.layout-panel {
-		background: white;
-		border: 1px solid #e5e7eb;
-		padding: 12px;
-		border-radius: 12px;
-		box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
-		display: block;
-	}
-	.layout-panel .layout {
-		gap: 8px;
-	}
 	.rightcol {
 		position: sticky;
 		top: 70px;
 		height: fit-content;
-	}
-
-	.sheet-wrap {
-		margin-bottom: 32px;
-		display: flex;
-		justify-content: center;
-	}
-	.a4 {
-		position: relative;
-		width: 210mm;
-		height: 297mm;
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-		overflow: hidden;
-	}
-	.grid {
-		width: 100%;
-		height: 100%;
-		display: grid;
-	}
-	.label {
-		position: absolute;
-		right: 8px;
-		top: 8px;
-		font-size: 10px;
-		color: #94a3b8;
-		user-select: none;
-	}
-
-	.cell {
-		position: relative;
-	}
-	.card {
-		position: relative;
-		border: 1px solid #e5e7eb;
-		border-radius: 3mm;
-		overflow: hidden;
-		background: white;
-	}
-	.parch {
-		position: absolute;
-		inset: 0;
-	}
-	.art {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		display: block;
-	}
-	.band {
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0 3mm;
-	}
-	.title {
-		font-family: 'Alegreya SC', serif;
-		color: white;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.back {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		padding: 3mm;
-	}
-	.backTitle {
-		font-family: 'Alegreya SC', serif;
-		line-height: 1.1;
-		margin-bottom: 2mm;
-		text-align: center;
-	}
-	.hr {
-		width: 100%;
-		height: 1px;
-		background: #d6d3d1;
-		margin-bottom: 2mm;
-		opacity: 0.8;
-	}
-	.desc {
-		white-space: pre-wrap;
-		font-size: 10pt;
-		line-height: 1.3;
-		color: #1f2937;
-		overflow: hidden;
-	}
-
-	.cover-root {
-		position: absolute;
-		inset: 0;
-		display: grid;
-		place-items: center;
-	}
-	.bg {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.frame {
-		position: absolute;
-		inset: 3mm;
-		border-radius: 3mm;
-		box-shadow:
-			inset 0 0 0 2px rgba(255, 255, 255, 0.7),
-			inset 0 0 0 4px rgba(0, 0, 0, 0.15);
-	}
-	.gem {
-		width: 18mm;
-		height: 18mm;
-		border-radius: 50%;
-		background: radial-gradient(circle at 30% 30%, #fff, #9dd7ff 30%, #1e90ff 70%, #003c8f 100%);
-		box-shadow:
-			0 4px 10px rgba(0, 0, 0, 0.35),
-			inset 0 0 10px rgba(255, 255, 255, 0.6);
-	}
-	.ribbon {
-		position: absolute;
-		bottom: 6mm;
-		left: 6mm;
-		right: 6mm;
-		display: flex;
-		justify-content: center;
-	}
-	.ribbon .title {
-		padding: 2mm 4mm;
-		border-radius: 2mm;
-		background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.2));
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-		font-family: 'Alegreya SC', serif;
-		font-size: 12pt;
-		color: white;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 100%;
-	}
-
-	.crop {
-		position: absolute;
-		width: 5mm;
-		height: 5mm;
-		stroke: #000;
-		stroke-width: 0.3;
-		fill: none;
-		pointer-events: none;
-	}
-	.tl {
-		left: -1mm;
-		top: -1mm;
-	}
-	.tr {
-		right: -1mm;
-		top: -1mm;
-		transform: scaleX(-1);
-	}
-	.bl {
-		left: -1mm;
-		bottom: -1mm;
-		transform: scaleY(-1);
-	}
-	.br {
-		right: -1mm;
-		bottom: -1mm;
-		transform: scale(-1);
 	}
 
 	.preview {
@@ -1062,14 +530,19 @@
 		display: flex;
 		justify-content: center;
 	}
-	.preview-wrap {
-		transform-origin: top center;
-	}
 	.muted {
 		color: #64748b;
 		font-size: 13px;
 		margin: 6px 0;
 	}
+	.card-thumb {
+		width: 48px;
+		height: 64px;
+		object-fit: cover;
+		border-radius: 8px;
+		border: 1px solid #e5e7eb;
+	}
+
 	.item {
 		display: flex;
 		gap: 10px;
@@ -1095,53 +568,6 @@
 		font-size: 12px;
 	}
 
-	.dz {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 260px;
-		min-height: 120px;
-		border: 2px dashed #cbd5e1;
-		border-radius: 14px;
-		background: #fff;
-		cursor: pointer;
-		user-select: none;
-		transition:
-			background 0.15s,
-			border-color 0.15s,
-			transform 0.08s;
-	}
-	.dz:hover {
-		background: #f8fafc;
-	}
-	.dz[data-hovering='true'] {
-		background: #eef2ff;
-		border-color: #6366f1;
-		transform: scale(0.998);
-	}
-	.hidden {
-		display: none;
-	}
-	.hint {
-		text-align: center;
-		padding: 12px;
-	}
-	.hint .title {
-		font-size: 14px;
-		font-weight: 600;
-		color: #0f172a;
-	}
-	.hint .sub {
-		font-size: 12px;
-		color: #64748b;
-		margin-top: 2px;
-	}
-	.thumbRow {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-top: 8px;
-	}
 	.tips ul {
 		margin: 6px 0;
 		padding-left: 18px;

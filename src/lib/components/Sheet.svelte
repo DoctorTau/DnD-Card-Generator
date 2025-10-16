@@ -56,7 +56,7 @@
       gap: {gap}mm;
     "
 		>
-			{#each cellsForRender as card, i (card.id || `cell-${i}`)}
+			{#each cellsForRender as card, i}
 				<CardCell
 					{mode}
 					{card}
