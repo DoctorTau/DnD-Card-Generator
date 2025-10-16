@@ -28,6 +28,21 @@
 		desc: ''
 	}));
 	$: cells = [...filled, ...blanks];
+
+	function mirrorRows(arr: Card[], cols: number, rows: number): Card[] {
+		const total = cols * rows;
+		const out = new Array(total) as Card[];
+		for (let r = 0; r < rows; r++) {
+			for (let c = 0; c < cols; c++) {
+				const src = r * cols + c;
+				const dest = r * cols + (cols - 1 - c);
+				out[dest] = arr[src];
+			}
+		}
+		return out;
+	}
+
+	$: cellsForRender = mode === 'back' ? mirrorRows(cells, cols, rows) : cells;
 </script>
 
 <div class="wrap">
@@ -41,7 +56,7 @@
       gap: {gap}mm;
     "
 		>
-			{#each cells as card, i}
+			{#each cellsForRender as card, i (card.id || `cell-${i}`)}
 				<CardCell
 					{mode}
 					{card}

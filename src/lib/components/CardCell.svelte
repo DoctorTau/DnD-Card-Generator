@@ -19,8 +19,8 @@
 	export let mookUrl: string;
 	export let coverUrl: string;
 
-	const hasImg = () => Boolean(card?.img);
-	const isFront = () => mode === 'front';
+	$: hasImg = Boolean(card?.img && card.img.trim());
+	$: isFront = mode === 'front';
 </script>
 
 <div class="cell">
@@ -29,13 +29,13 @@
 			<div class="parch" style="background:{parchmentCSS(parchmentIntensity)}"></div>
 		{/if}
 
-		{#if isFront()}
-			{#if hasImg()}
+		{#if isFront}
+			{#if hasImg}
 				<img class="art" src={card.img} alt="" style="object-fit:{fitMode}" />
 			{/if}
 			<div
 				class="band"
-				style="height:{mm(nameBandHeight)}; background:{hasImg()
+				style="height:{mm(nameBandHeight)}; background:{hasImg
 					? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
 					: 'rgba(0,0,0,.06)'}"
 			>

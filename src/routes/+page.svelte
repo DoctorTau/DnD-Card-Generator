@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import DropZone from '$lib/components/common/DropZone.svelte';
-	import CardFront from '$lib/components/common/CardFront.svelte';
-	import CardBack from '$lib/components/common/CardBack.svelte';
-	import CropMarks from '$lib/components/common/CropMarks.svelte';
+	import Sheet from '$lib/components/Sheet.svelte';
 	import { browser } from '$app/environment';
 
 	// ---------- Types ----------
@@ -21,7 +19,7 @@
 		gap = 3,
 		cols = 3,
 		rows = 3;
-	let showLayout = true;
+	let showLayout = false;
 	let showCrop = true;
 	let nameSize = 12; // pt
 	let nameBandHeight = 16; // mm
@@ -114,16 +112,6 @@
 	}
 	function mm(n: number) {
 		return `${n}mm`;
-	}
-	function fillToSlots(list: Card[]) {
-		const filled = list.slice(0, slots);
-		const blanks = Array.from({ length: slots - filled.length }, (_, i) => ({
-			id: `blank-${i}`,
-			name: '',
-			img: '',
-			desc: ''
-		}));
-		return [...filled, ...blanks];
 	}
 	function limitDesc() {
 		if (desc.length > DESC_LIMIT) desc = desc.slice(0, DESC_LIMIT);
@@ -317,15 +305,24 @@
 		<label class="field">
 			<span>Image</span>
 
-			<!-- Drag & drop zone -->
-			<DropZone on:file={(e) => handleFile(e.detail.file)} />
-
-			{#if imageDataUrl}
-				<div class="thumbRow">
-					<img src={imageDataUrl} alt="preview" class="card-thumb" />
-					<button class="btn small ghost" on:click={() => (imageDataUrl = null)}>Remove</button>
+			<div style="display:flex;align-items:center;gap:12px">
+				<div style="flex:1;min-width:200px;min-height:120px;display:flex;align-items:center">
+					<!-- Drag & drop zone -->
+					<DropZone on:file={(e) => handleFile(e.detail.file)} />
 				</div>
-			{/if}
+
+				{#if imageDataUrl}
+					<div class="thumbRow" style="align-items:center">
+						<img
+							src={imageDataUrl}
+							alt="preview"
+							class="card-thumb"
+							style="height: 120px;width: 100%;"
+						/>
+						<button class="btn small ghost" on:click={() => (imageDataUrl = null)}>Remove</button>
+					</div>
+				{/if}
+			</div>
 		</label>
 
 		<label class="field">
@@ -512,78 +509,49 @@
 
 		<!-- FRONT SHEETS -->
 		{#each pagesFront as page, idx (idx)}
-			<div class="sheet-wrap">
-				<div class="a4">
-					<div
-						class="grid"
-						style="
-              padding: {sheetPadding.padY}mm {sheetPadding.padX}mm;
-              grid-template-columns: repeat({cols}, {cardW}mm);
-              grid-template-rows: repeat({rows}, {cardH}mm);
-              gap: {gap}mm;
-            "
-					>
-						{#each fillToSlots(page) as c, i (c.id || i)}
-							<div class="cell">
-								<CardFront
-									{c}
-									{mm}
-									{cardW}
-									{cardH}
-									{nameBandHeight}
-									{nameSize}
-									{fitMode}
-									{useParchment}
-									{parchmentCSS}
-								/>
-								{#if showCrop}
-									<CropMarks />
-								{/if}
-							</div>
-						{/each}
-					</div>
-					<div class="label">A4 210×297mm (FRONT)</div>
-				</div>
-			</div>
+			<Sheet
+				mode="front"
+				cards={page}
+				{cardW}
+				{cardH}
+				{gap}
+				{cols}
+				{rows}
+				{nameBandHeight}
+				{nameSize}
+				paddingX={sheetPadding.padX}
+				paddingY={sheetPadding.padY}
+				{showCrop}
+				{fitMode}
+				{useParchment}
+				{parchmentIntensity}
+				{mookUrl}
+				{coverUrl}
+			/>
 		{/each}
 
 		<!-- BACK SHEETS -->
 		{#if generateBacks && cards.length > 0}
 			{#each pagesBack as page, idx (idx)}
-				<div class="sheet-wrap">
-					<div class="a4">
-						<div
-							class="grid"
-							style="
-                padding: {sheetPadding.padY}mm {sheetPadding.padX}mm;
-                grid-template-columns: repeat({cols}, {cardW}mm);
-                grid-template-rows: repeat({rows}, {cardH}mm);
-                gap: {gap}mm;
-              "
-						>
-							{#each fillToSlots(page) as c, i (c.id || i)}
-								<div class="cell">
-									<CardBack
-										{c}
-										{mm}
-										{cardW}
-										{cardH}
-										{nameSize}
-										{useParchment}
-										{parchmentCSS}
-										{coverUrl}
-										{mookUrl}
-										{fancyCoverFallback}
-									/>
-									{#if showCrop}
-										<CropMarks />
-									{/if}
-								</div>
-							{/each}
-						</div>
-						<div class="label">A4 210×297mm (BACK)</div>
-					</div>
-				</div>
+				<Sheet
+					mode="back"
+					cards={page}
+					{cardW}
+					{cardH}
+					{gap}
+					{cols}
+					{rows}
+					{nameBandHeight}
+					{nameSize}
+					paddingX={sheetPadding.padX}
+					paddingY={sheetPadding.padY}
+					{showCrop}
+					{fitMode}
+					{useParchment}
+					{parchmentIntensity}
+					{mookUrl}
+					{coverUrl}
+				/>
 			{/each}
 		{/if}
 	</div>
