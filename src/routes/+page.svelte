@@ -244,11 +244,85 @@
 	}
 
 	// ---------- PDF export ----------
+
+	// Convert an image source to a cropped Blob URL sized in pixels
+	async function cropImageToBlobUrl(
+		imgSrc: string,
+		fitMode: 'cover' | 'contain',
+		targetW: number,
+		targetH: number
+	): Promise<string> {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.crossOrigin = 'anonymous';
+			img.onload = async () => {
+				try {
+					const canvas = document.createElement('canvas');
+					canvas.width = targetW;
+					canvas.height = targetH;
+					const ctx = canvas.getContext('2d');
+					if (!ctx) return resolve(imgSrc);
+
+					const imgRatio = img.width / img.height;
+					const targetRatio = targetW / targetH;
+					let drawW: number, drawH: number, offsetX: number, offsetY: number;
+
+					if (fitMode === 'cover') {
+						if (imgRatio > targetRatio) {
+							drawH = targetH;
+							drawW = drawH * imgRatio;
+							offsetX = (targetW - drawW) / 2;
+							offsetY = 0;
+						} else {
+							drawW = targetW;
+							drawH = drawW / imgRatio;
+							offsetX = 0;
+							offsetY = (targetH - drawH) / 2;
+						}
+					} else {
+						if (imgRatio > targetRatio) {
+							drawW = targetW;
+							drawH = drawW / imgRatio;
+							offsetX = 0;
+							offsetY = (targetH - drawH) / 2;
+						} else {
+							drawH = targetH;
+							drawW = drawH * imgRatio;
+							offsetX = (targetW - drawW) / 2;
+							offsetY = 0;
+						}
+					}
+
+					ctx.fillStyle = 'transparent';
+					ctx.fillRect(0, 0, targetW, targetH);
+					ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+
+					const blob: Blob | null = await new Promise((res) => canvas.toBlob(res));
+					if (!blob) return resolve(imgSrc);
+					const url = URL.createObjectURL(blob);
+					resolve(url);
+				} catch (e) {
+					resolve(imgSrc);
+				}
+			};
+			img.onerror = () => resolve(imgSrc);
+			img.src = imgSrc;
+		});
+	}
+
 	async function makePdf() {
 		if (!browser) return;
 		const [{ jsPDF }, html2canvas] = await Promise.all([import('jspdf'), import('html2canvas')]);
 
+		const exportScale = Math.max(2, window.devicePixelRatio || 1);
 		document.documentElement.setAttribute('data-exporting', 'true');
+
+		// Pre-crop all images to blob URLs matching card dimensions and export scale
+		const images = Array.from(document.querySelectorAll<HTMLImageElement>('#print-area img.art'));
+		const originalSrcs = new Map<HTMLImageElement, string>();
+		const originalStyles = new Map<HTMLImageElement, string>();
+		const blobUrls: string[] = [];
+
 		try {
 			const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 			const sheets = Array.from(document.querySelectorAll<HTMLElement>('#print-area .a4'));
@@ -258,10 +332,30 @@
 				return;
 			}
 
+			// Convert mm to pixels: 1mm ≈ 3.7795px at 96dpi
+			const mmToPx = 3.7795 * exportScale;
+			const targetW = Math.round(cardW * mmToPx);
+			const targetH = Math.round(cardH * mmToPx);
+
+			for (const img of images) {
+				if (!img.src || !img.complete) continue;
+				originalSrcs.set(img, img.src);
+				originalStyles.set(img, img.getAttribute('style') || '');
+
+				// Crop the image to card size with current fitMode
+				const croppedUrl = await cropImageToBlobUrl(img.src, fitMode, targetW, targetH);
+				if (croppedUrl.startsWith('blob:')) {
+					blobUrls.push(croppedUrl);
+				}
+				img.src = croppedUrl;
+				// Remove object-fit since the blob is already cropped to exact size
+				img.style.objectFit = 'fill';
+			}
+
 			for (let i = 0; i < sheets.length; i++) {
 				const node = sheets[i];
 				const canvas = await html2canvas.default(node, {
-					scale: Math.max(2, window.devicePixelRatio || 1),
+					scale: exportScale,
 					useCORS: true,
 					backgroundColor: '#ffffff',
 					logging: false
@@ -272,6 +366,23 @@
 			}
 
 			pdf.save('dnd-cards.pdf');
+
+			// Restore original image sources and styles
+			for (const [img, originalSrc] of originalSrcs) {
+				img.src = originalSrc;
+			}
+			for (const [img, originalStyle] of originalStyles) {
+				if (originalStyle) {
+					img.setAttribute('style', originalStyle);
+				} else {
+					img.style.objectFit = fitMode;
+				}
+			}
+
+			// Revoke blob URLs to free memory
+			for (const url of blobUrls) {
+				URL.revokeObjectURL(url);
+			}
 		} finally {
 			document.documentElement.removeAttribute('data-exporting');
 		}
@@ -385,7 +496,6 @@
 		{/if}
 	</div>
 
-	<!-- Sidebar -->
 	<aside class="rightcol">
 		<div class="preview">
 			<div class="head">
@@ -415,7 +525,7 @@
 					{coverUrl}
 				/>
 			</div>
-			<div class="muted">This is just a preview — the card is added after “Add Card”.</div>
+			<div class="muted">This is just a preview — the card is added after "Add Card".</div>
 		</div>
 
 		<h2>Cards in project ({cards.length})</h2>
