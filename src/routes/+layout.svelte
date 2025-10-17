@@ -1,3 +1,7 @@
+<script>
+	import '../app.css';
+</script>
+
 <svelte:head>
 	<!-- Alegreya SC for names -->
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -6,7 +10,5 @@
 		rel="stylesheet"
 	/>
 </svelte:head>
-
-<link rel="stylesheet" href="/app.css" />
 
 <slot />
