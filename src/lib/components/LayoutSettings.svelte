@@ -164,33 +164,37 @@
 
 <style>
 	.btn {
-		border: 1px solid #e5e7eb;
-		background: white;
-		border-radius: 14px;
-		padding: 8px 14px;
-		font-size: 14px;
+		border: 1px solid var(--border-2);
+		background: var(--surface);
+		color: var(--text);
+		border-radius: var(--radius-md);
+		padding: 8px 16px;
+		font-size: 13px;
+		font-weight: 500;
 		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
 	}
 	.btn:hover {
-		background: #f8fafc;
+		background: var(--surface-2);
+		border-color: var(--gold);
 	}
 	.btn:disabled {
-		opacity: 0.5;
+		opacity: 0.4;
 		cursor: not-allowed;
 	}
 
 	.layout-panel {
-		background: white;
-		border: 1px solid #e5e7eb;
-		padding: 12px;
-		border-radius: 12px;
-		box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+		background: var(--surface);
+		border: 1px solid var(--border);
+		padding: 16px;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-md);
 		display: block;
 	}
 	.layout {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 10px;
 		align-items: end;
 	}
 
@@ -199,25 +203,79 @@
 	.select {
 		display: flex;
 		flex-direction: column;
-		font-size: 12px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		gap: 4px;
 	}
 	.field input,
 	.select select {
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		padding: 8px 10px;
-		font-size: 14px;
-		min-width: 200px;
+		border: 1px solid var(--border-2);
+		border-radius: var(--radius-sm);
+		padding: 8px 12px;
+		font-size: 13px;
+		min-width: 190px;
+		background: var(--bg-mid);
+		color: var(--text);
+		font-weight: 400;
+		letter-spacing: 0;
+		text-transform: none;
+		transition: border-color 0.15s, box-shadow 0.15s;
+	}
+	.field input:focus,
+	.select select:focus {
+		outline: none;
+		border-color: var(--gold);
+		box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+	}
+	.field input[type='range'] {
+		min-width: 160px;
+		accent-color: var(--gold);
+		padding: 4px 0;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+	.field input[type='color'] {
+		min-width: 60px;
+		height: 36px;
+		padding: 2px;
+		cursor: pointer;
+	}
+	.select select {
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 10px center;
+		padding-right: 28px;
+		cursor: pointer;
 	}
 	.check {
 		flex-direction: row;
 		gap: 8px;
 		align-items: center;
+		text-transform: none;
+		letter-spacing: 0;
+		font-size: 13px;
+		font-weight: 400;
+		color: var(--text);
+		cursor: pointer;
+	}
+	.check input[type='checkbox'] {
+		accent-color: var(--gold);
+		width: 15px;
+		height: 15px;
+		cursor: pointer;
 	}
 
 	.padinfo {
 		margin-left: auto;
-		font-size: 12px;
-		color: #64748b;
+		font-size: 11px;
+		color: var(--text-dim);
+		letter-spacing: 0;
+		font-weight: 400;
+		text-transform: none;
 	}
 </style>

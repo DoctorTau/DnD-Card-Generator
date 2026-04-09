@@ -89,9 +89,9 @@
 		width: 210mm;
 		height: 297mm;
 		background: white;
-		border: 1px solid #e5e7eb;
+		border: 1px solid var(--border, #e5e7eb);
 		border-radius: 12px;
-		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+		box-shadow: 0 10px 36px rgba(0, 0, 0, 0.18);
 		overflow: hidden;
 	}
 	.grid {
@@ -104,7 +104,7 @@
 		right: 8px;
 		top: 8px;
 		font-size: 10px;
-		color: #94a3b8;
+		color: var(--sheet-label);
 		user-select: none;
 	}
 </style>

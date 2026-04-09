@@ -1,5 +1,70 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
+
+  /* === Dark theme (default) === */
+  --bg:          #0e0c14;
+  --bg-mid:      #16121f;
+  --surface:     #1e1a2a;
+  --surface-2:   #252038;
+  --border:      rgba(201,168,76,0.15);
+  --border-2:    rgba(201,168,76,0.30);
+
+  --gold:        #c9a84c;
+  --gold-bright: #e4c878;
+  --gold-dim:    rgba(201,168,76,0.12);
+
+  --text:        #f0e8d0;
+  --text-muted:  #9487b0;
+  --text-dim:    #5c5475;
+
+  --radius-sm:   8px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md:   0 6px 24px rgba(0,0,0,0.5);
+  --shadow-lg:   0 16px 48px rgba(0,0,0,0.6);
+
+  /* Component-specific */
+  --topbar-bg:   rgba(14,12,20,0.82);
+  --dz-bg:       rgba(30,26,42,0.6);
+  --dz-bg-hover: rgba(37,32,56,0.8);
+  --dz-sub:      #7a6e94;
+  --sheet-label: #6b5c8a;
+  --input-num-bg:#16121f;
+}
+
+/* === Light theme (system preference) === */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --bg:          #f0ebe0;
+    --bg-mid:      #faf6ef;
+    --surface:     #ffffff;
+    --surface-2:   #f5f0e6;
+    --border:      rgba(130,95,20,0.15);
+    --border-2:    rgba(130,95,20,0.28);
+
+    --gold:        #8b6610;
+    --gold-bright: #a67d18;
+    --gold-dim:    rgba(130,95,20,0.10);
+
+    --text:        #1c150a;
+    --text-muted:  #6b5a38;
+    --text-dim:    #a89070;
+
+    --shadow-sm:   0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md:   0 6px 24px rgba(0,0,0,0.12);
+    --shadow-lg:   0 16px 48px rgba(0,0,0,0.15);
+
+    --topbar-bg:   rgba(240,235,224,0.88);
+    --dz-bg:       rgba(255,252,245,0.75);
+    --dz-bg-hover: rgba(245,240,230,0.95);
+    --dz-sub:      #8b7050;
+    --sheet-label: #a89070;
+    --input-num-bg:#faf6ef;
+  }
 }
 
 * {
@@ -8,8 +73,22 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: radial-gradient(120% 100% at 50% -20%, #fff 0%, #f8fafc 60%, #eef2f7 100%);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(100,60,200,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(201,168,76,0.05) 0%, transparent 55%);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200,150,50,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(130,95,20,0.04) 0%, transparent 55%);
+  }
 }
 
 /* Печать: A4 без полей, точные цвета */

@@ -361,14 +361,16 @@
 	<aside class="rightcol">
 		<div class="preview">
 			<div class="head">
-				<h3>Live preview</h3>
+				<h3>Live Preview</h3>
 				<div class="switch">
-					<label
-						><input type="radio" name="pmode" value="front" bind:group={previewMode} /> Front</label
-					>
-					<label
-						><input type="radio" name="pmode" value="back" bind:group={previewMode} /> Back</label
-					>
+					<label>
+						<input type="radio" name="pmode" value="front" bind:group={previewMode} />
+						<span>Front</span>
+					</label>
+					<label>
+						<input type="radio" name="pmode" value="back" bind:group={previewMode} />
+						<span>Back</span>
+					</label>
 				</div>
 			</div>
 			<div class="pv">
@@ -387,25 +389,33 @@
 					{coverUrl}
 				/>
 			</div>
-			<div class="muted">This is just a preview — the card is added after "Add Card".</div>
+			<div class="muted">Preview only — click "Add Card" to save.</div>
 		</div>
 
-		<h2>Cards in project ({cards.length})</h2>
-		<p class="muted">Front and back sheets keep the same order for duplex printing.</p>
-		{#if cards.length === 0}
-			<div class="muted">No cards yet — add the first one.</div>
-		{/if}
+		<div class="section-header">
+			<h2>Cards in project</h2>
+			<span class="count-badge">{cards.length}</span>
+		</div>
 
-		{#each cards as c (c.id)}
-			<div class="item">
-				<img src={c.img} alt="" class="card-thumb" />
-				<div class="meta">
-					<div class="title" style="font-family:'Alegreya SC', serif">{c.name}</div>
-					<div class="sub">{c.desc ? truncate(c.desc, 80) : 'Back: fantasy cover'}</div>
+		<div class="cards-list">
+			{#if cards.length === 0}
+				<div class="empty-state">
+					<div class="empty-icon">🃏</div>
+					No cards yet — add the first one above.
 				</div>
-				<button class="btn small ghost" on:click={() => removeCard(c.id)}>Remove</button>
-			</div>
-		{/each}
+			{/if}
+
+			{#each cards as c (c.id)}
+				<div class="item">
+					<img src={c.img} alt="" class="card-thumb" />
+					<div class="meta">
+						<div class="title" style="font-family:'Alegreya SC', serif">{c.name}</div>
+						<div class="sub">{c.desc ? truncate(c.desc, 72) : 'Back: fantasy cover'}</div>
+					</div>
+					<button class="btn" on:click={() => removeCard(c.id)}>Remove</button>
+				</div>
+			{/each}
+		</div>
 	</aside>
 </div>
 
@@ -422,25 +432,7 @@
 </div>
 
 <style>
-	:global(:root) {
-		color-scheme: light;
-	}
-	:global(*) {
-		box-sizing: border-box;
-	}
-	:global(body) {
-		margin: 0;
-		font-family:
-			system-ui,
-			-apple-system,
-			Segoe UI,
-			Roboto,
-			Arial,
-			sans-serif;
-		background: radial-gradient(120% 100% at 50% -20%, #fff 0%, #f8fafc 60%, #eef2f7 100%);
-	}
-
-	/* Hide "screen-only" bits while exporting to PDF — only sheets in print area, list blank */
+	/* Hide screen UI during PDF export */
 	:root[data-exporting='true'] :global(.topbar),
 	:root[data-exporting='true'] .rightcol,
 	:root[data-exporting='true'] .tips-wrap,
@@ -450,8 +442,25 @@
 
 	.tips-wrap {
 		margin: 0 auto;
-		max-width: 48rem;
-		padding: 0 1rem 5rem;
+		max-width: 52rem;
+		padding: 0 1.5rem 5rem;
+	}
+	.tips {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		padding: 14px 18px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.tips b {
+		color: var(--gold);
+		font-weight: 600;
+	}
+	.tips ul {
+		margin: 6px 0;
+		padding-left: 20px;
+		line-height: 1.7;
 	}
 
 	@page {
@@ -469,13 +478,12 @@
 	}
 
 	.workspace {
-		/* Constrain layout for frontend to 1100px for simpler rendering */
-		max-width: 1100px;
+		max-width: 1120px;
 		margin: 0 auto;
-		padding: 12px;
+		padding: 16px;
 		display: grid;
-		grid-template-columns: 1fr 320px;
-		gap: 14px;
+		grid-template-columns: 1fr 340px;
+		gap: 16px;
 	}
 	@media (max-width: 900px) {
 		.workspace {
@@ -491,54 +499,134 @@
 	}
 	.rightcol {
 		position: sticky;
-		top: 72px;
+		top: 76px;
 		height: fit-content;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
 	}
 
+	/* Preview panel */
 	.preview {
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		background: white;
-		padding: 10px;
-		margin-bottom: 12px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background: var(--surface);
+		padding: 14px;
+		box-shadow: var(--shadow-md);
 	}
 	.head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 6px;
+		margin-bottom: 10px;
+	}
+	.head h3 {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--gold);
 	}
 	.switch {
 		display: flex;
-		gap: 10px;
-		font-size: 13px;
+		gap: 4px;
+		background: var(--bg-mid);
+		padding: 3px;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border);
+	}
+	.switch label {
+		display: flex;
+		align-items: center;
+		cursor: pointer;
+	}
+	.switch input[type='radio'] {
+		display: none;
+	}
+	.switch label span {
+		padding: 4px 12px;
+		font-size: 12px;
+		font-weight: 500;
+		border-radius: 5px;
+		color: var(--text-muted);
+		transition: all 0.15s;
+		cursor: pointer;
+		user-select: none;
+	}
+	.switch input[type='radio']:checked + span {
+		background: var(--surface-2);
+		color: var(--gold);
+		box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 	}
 	.pv {
 		display: flex;
 		justify-content: center;
+		padding: 8px 0;
 	}
 	.muted {
-		color: #64748b;
-		font-size: 13px;
-		margin: 6px 0;
+		color: var(--text-muted);
+		font-size: 12px;
+		margin: 4px 0;
 	}
-	.card-thumb {
-		width: 48px;
-		height: 64px;
-		object-fit: cover;
-		border-radius: 8px;
-		border: 1px solid #e5e7eb;
+
+	/* Card list section */
+	.section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.section-header h2 {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+	.count-badge {
+		background: var(--gold-dim);
+		border: 1px solid var(--border-2);
+		color: var(--gold);
+		font-size: 11px;
+		font-weight: 700;
+		padding: 2px 9px;
+		border-radius: 999px;
+	}
+	.cards-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.empty-state {
+		text-align: center;
+		padding: 28px 16px;
+		color: var(--text-dim);
+		font-size: 13px;
+		border: 1px dashed var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface);
+	}
+	.empty-state .empty-icon {
+		font-size: 28px;
+		margin-bottom: 8px;
+		opacity: 0.5;
 	}
 
 	.item {
 		display: flex;
 		gap: 10px;
 		align-items: center;
-		border: 1px solid #e5e7eb;
-		border-radius: 12px;
-		padding: 8px;
-		background: white;
-		margin-bottom: 8px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		padding: 10px;
+		background: var(--surface);
+		transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+	}
+	.item:hover {
+		border-color: var(--border-2);
+		background: var(--surface-2);
+		box-shadow: var(--shadow-sm);
 	}
 	.item .meta {
 		min-width: 0;
@@ -546,21 +634,48 @@
 	}
 	.item .title {
 		font-weight: 600;
+		font-size: 14px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: var(--text);
+	}
+	.item .sub {
+		color: var(--text-muted);
+		font-size: 11px;
+		margin-top: 2px;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.item .sub {
-		color: #94a3b8;
+	.card-thumb {
+		width: 44px;
+		height: 60px;
+		object-fit: cover;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-2);
+		flex-shrink: 0;
+	}
+	.btn {
+		border: 1px solid var(--border-2);
+		background: transparent;
+		color: var(--text-muted);
+		border-radius: var(--radius-sm);
+		padding: 5px 10px;
 		font-size: 12px;
+		font-weight: 500;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: all 0.15s;
+		flex-shrink: 0;
 	}
-	.item .btn:focus-visible {
-		outline: 2px solid #6366f1;
+	.btn:hover {
+		background: rgba(224,82,82,0.12);
+		border-color: rgba(224,82,82,0.4);
+		color: #e05252;
+	}
+	.btn:focus-visible {
+		outline: 2px solid var(--gold);
 		outline-offset: 2px;
-	}
-
-	.tips ul {
-		margin: 6px 0;
-		padding-left: 18px;
 	}
 </style>

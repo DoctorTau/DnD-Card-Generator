@@ -30,41 +30,54 @@
 	aria-label="Upload image"
 >
 	<div class="hint">
-		<div class="title">Drag & drop image here or click</div>
-		<div class="sub">PNG/JPEG. Max ~50 MB (browser dependent).</div>
+		<div class="icon">🖼</div>
+		<div class="title">Drop image or click to browse</div>
+		<div class="sub">PNG · JPEG · WebP — up to 50 MB</div>
 	</div>
 
 	<input class="hidden" type="file" accept="image/*" bind:this={fileInput} on:change={onPick} />
 </div>
 
 <style>
-	/* Reuse local styles expected by the app */
 	.dz {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		min-width: 260px;
 		min-height: 120px;
-		border: 2px dashed #cbd5e1;
+		border: 2px dashed var(--border-2);
 		border-radius: 14px;
-		background: #fff;
+		background: var(--dz-bg);
 		cursor: pointer;
 		user-select: none;
 		transition:
 			background 0.15s,
-			border-color 0.15s,
+			border-color 0.2s,
+			box-shadow 0.2s,
 			transform 0.08s;
+		position: relative;
+		overflow: hidden;
+	}
+	.dz::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: radial-gradient(ellipse 70% 60% at 50% 50%, var(--gold-dim) 0%, transparent 70%);
+		pointer-events: none;
 	}
 	.dz:hover {
-		background: #f8fafc;
+		background: var(--dz-bg-hover);
+		border-color: var(--border-2);
+		box-shadow: 0 0 20px var(--gold-dim);
 	}
 	.dz[data-hovering='true'] {
-		background: #eef2ff;
-		border-color: #6366f1;
-		transform: scale(0.998);
+		background: var(--gold-dim);
+		border-color: var(--gold);
+		box-shadow: 0 0 30px var(--gold-dim);
+		transform: scale(0.999);
 	}
 	.dz:focus-visible {
-		outline: 2px solid #6366f1;
+		outline: 2px solid var(--gold);
 		outline-offset: 2px;
 	}
 	.hidden {
@@ -72,16 +85,23 @@
 	}
 	.hint {
 		text-align: center;
-		padding: 12px;
+		padding: 16px;
+		position: relative;
+	}
+	.icon {
+		font-size: 28px;
+		margin-bottom: 8px;
+		opacity: 0.7;
 	}
 	.hint .title {
-		font-size: 14px;
+		font-size: 13px;
 		font-weight: 600;
-		color: #0f172a;
+		color: var(--gold);
+		letter-spacing: 0.02em;
 	}
 	.hint .sub {
-		font-size: 12px;
-		color: #64748b;
-		margin-top: 2px;
+		font-size: 11px;
+		color: var(--dz-sub);
+		margin-top: 3px;
 	}
 </style>

@@ -72,10 +72,13 @@
 		overflow: hidden;
 		background: white;
 	}
+	.card.blank-slot {
+		border: none !important;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
 	.card.blank-slot .blank-placeholder {
-		position: absolute;
-		inset: 0;
-		background: #fafafa;
+		display: none;
 	}
 	.parch {
 		position: absolute;
