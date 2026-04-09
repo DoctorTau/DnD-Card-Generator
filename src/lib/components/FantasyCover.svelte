@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { fancyCoverFallback } from '$lib/utils/parchment';
+	import { fancyCoverFallbackPrinterFriendly } from '$lib/utils/parchment';
 	export let name: string;
 	export let coverUrl: string;
 </script>
 
-<div class="root">
+<div class="root printer-friendly">
 	{#if coverUrl}
 		<img src={coverUrl} alt="cover" class="bg" />
 	{:else}
-		<div class="bg" style="background:{fancyCoverFallback()}"></div>
+		<div class="bg" style="background:{fancyCoverFallbackPrinterFriendly()}"></div>
 	{/if}
 
 	<div class="frame"></div>
@@ -67,9 +67,10 @@
 		font-size: 12pt;
 		color: white;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 100%;
+	}
+	.root.printer-friendly .title {
+		background: linear-gradient(180deg, rgba(80, 60, 40, 0.25), rgba(60, 45, 30, 0.12));
+		color: #2d2420;
+		text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
 	}
 </style>

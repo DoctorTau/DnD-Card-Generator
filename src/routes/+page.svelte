@@ -410,7 +410,7 @@
 </div>
 
 <!-- Helper tips -->
-<div class="mx auto max-w-3xl px-4 pb-20 noprint">
+<div class="tips-wrap noprint">
 	<div class="tips">
 		<b>Printing tips:</b>
 		<ul>
@@ -440,11 +440,18 @@
 		background: radial-gradient(120% 100% at 50% -20%, #fff 0%, #f8fafc 60%, #eef2f7 100%);
 	}
 
-	/* Hide "screen-only" bits while exporting to PDF (html2canvas time) */
+	/* Hide "screen-only" bits while exporting to PDF — only sheets in print area, list blank */
 	:root[data-exporting='true'] :global(.topbar),
 	:root[data-exporting='true'] .rightcol,
-	:root[data-exporting='true'] .tips {
+	:root[data-exporting='true'] .tips-wrap,
+	:root[data-exporting='true'] :global(.layout-panel) {
 		display: none !important;
+	}
+
+	.tips-wrap {
+		margin: 0 auto;
+		max-width: 48rem;
+		padding: 0 1rem 5rem;
 	}
 
 	@page {
@@ -470,13 +477,21 @@
 		grid-template-columns: 1fr 320px;
 		gap: 14px;
 	}
+	@media (max-width: 900px) {
+		.workspace {
+			grid-template-columns: 1fr;
+		}
+		.rightcol {
+			position: static;
+		}
+	}
 	.leftcol {
 		display: grid;
 		gap: 16px;
 	}
 	.rightcol {
 		position: sticky;
-		top: 70px;
+		top: 72px;
 		height: fit-content;
 	}
 
@@ -538,6 +553,10 @@
 	.item .sub {
 		color: #94a3b8;
 		font-size: 12px;
+	}
+	.item .btn:focus-visible {
+		outline: 2px solid #6366f1;
+		outline-offset: 2px;
 	}
 
 	.tips ul {

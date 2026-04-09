@@ -63,6 +63,10 @@
 		border-color: #6366f1;
 		transform: scale(0.998);
 	}
+	.dz:focus-visible {
+		outline: 2px solid #6366f1;
+		outline-offset: 2px;
+	}
 	.hidden {
 		display: none;
 	}

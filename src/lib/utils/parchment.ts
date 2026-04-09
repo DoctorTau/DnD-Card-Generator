@@ -21,3 +21,13 @@ export function fancyCoverFallback() {
     linear-gradient(135deg, #654321 0%, #3b2716 50%, #1c120a 100%)
   `;
 }
+
+/** Light cream/tan gradient for card backs — saves printer ink. */
+export function fancyCoverFallbackPrinterFriendly() {
+    return `
+    radial-gradient(60% 80% at 20% 20%, rgba(255, 248, 240, 0.9), rgba(0,0,0,0) 60%),
+    radial-gradient(50% 70% at 80% 30%, rgba(250, 242, 230, 0.8), rgba(0,0,0,0) 60%),
+    radial-gradient(120% 140% at 50% 100%, rgba(235, 220, 200, 0.4), rgba(0,0,0,0) 60%),
+    linear-gradient(135deg, #f5f0e8 0%, #ebe5dc 50%, #e0d9ce 100%)
+  `;
+}

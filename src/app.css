@@ -33,6 +33,11 @@ body {
     border: none !important;
   }
 
+  /* Compensate for back side printing ~1mm lower on some printers (duplex alignment) */
+  .sheet-back .grid {
+    transform: translateY(-1mm);
+  }
+
   img {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -43,4 +48,9 @@ body {
 :root[data-exporting='true'] img {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+/* Same back-sheet 1mm compensation for PDF export (so printed PDF aligns) */
+:root[data-exporting='true'] .sheet-back .grid {
+  transform: translateY(-1mm);
 }

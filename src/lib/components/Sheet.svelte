@@ -45,7 +45,7 @@
 	$: cellsForRender = mode === 'back' ? mirrorRows(cells, cols, rows) : cells;
 </script>
 
-<div class="wrap">
+<div class="wrap" class:sheet-back={mode === 'back'}>
 	<div class="a4">
 		<div
 			class="grid"

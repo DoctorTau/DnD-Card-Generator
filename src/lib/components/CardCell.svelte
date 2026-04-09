@@ -21,36 +21,42 @@
 
 	$: hasImg = Boolean(card?.img && card.img.trim());
 	$: isFront = mode === 'front';
+	$: isBlank = Boolean(card?.id && card.id.startsWith('blank-'));
 </script>
 
 <div class="cell">
-	<div class="card" style="width:{mm(cardW)};height:{mm(cardH)};">
-		{#if useParchment}
-			<div class="parch" style="background:{parchmentCSS(parchmentIntensity)}"></div>
-		{/if}
-
-		{#if isFront}
-			{#if hasImg}
-				<img class="art" src={card.img} alt="" style="object-fit:{fitMode}" />
-			{/if}
-			<div
-				class="band"
-				style="height:{mm(nameBandHeight)}; background:{hasImg
-					? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
-					: 'rgba(0,0,0,.06)'}"
-			>
-				<div class="title" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
-			</div>
-		{:else if card.desc && card.desc.length > 0}
-			<div class="back">
-				<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
-				<div class="hr"></div>
-				<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
-					{card.desc}
-				</div>
-			</div>
+	<div class="card" class:blank-slot={isBlank} style="width:{mm(cardW)};height:{mm(cardH)};">
+		{#if isBlank}
+			<!-- Empty slot: do not display full card, only a minimal placeholder to save ink -->
+			<div class="blank-placeholder"></div>
 		{:else}
-			<FantasyCover {coverUrl} name={card.name} />
+			{#if useParchment}
+				<div class="parch" style="background:{parchmentCSS(parchmentIntensity)}"></div>
+			{/if}
+
+			{#if isFront}
+				{#if hasImg}
+					<img class="art" src={card.img} alt="" style="object-fit:{fitMode}" />
+				{/if}
+				<div
+					class="band"
+					style="height:{mm(nameBandHeight)}; background:{hasImg
+						? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
+						: 'rgba(0,0,0,.06)'}"
+				>
+					<div class="title" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
+				</div>
+			{:else if card.desc && card.desc.length > 0}
+				<div class="back">
+					<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
+					<div class="hr"></div>
+					<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
+						{card.desc}
+					</div>
+				</div>
+			{:else}
+				<FantasyCover {coverUrl} name={card.name} />
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -65,6 +71,11 @@
 		border-radius: 3mm;
 		overflow: hidden;
 		background: white;
+	}
+	.card.blank-slot .blank-placeholder {
+		position: absolute;
+		inset: 0;
+		background: #fafafa;
 	}
 	.parch {
 		position: absolute;

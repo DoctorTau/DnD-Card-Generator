@@ -97,6 +97,10 @@
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
+	.btn:focus-visible {
+		outline: 2px solid #6366f1;
+		outline-offset: 2px;
+	}
 	.btn.ghost {
 		background: transparent;
 	}
