@@ -28,7 +28,7 @@
 		</button>
 	</div>
 
-	<div class="grow"></div>
+	<div class="sep"></div>
 
 	<div class="controls">
 		<label class="field">
@@ -38,25 +38,16 @@
 
 		<label class="field">
 			<span>Image</span>
-
-			<div style="display:flex;align-items:center;gap:12px">
-				<div style="flex:1;min-width:200px;min-height:120px;display:flex;align-items:center">
-					<!-- Drag & drop zone -->
+			{#if imageDataUrl}
+				<div class="thumb-row">
+					<img src={imageDataUrl} alt="preview" class="card-thumb" />
+					<button class="btn small ghost" on:click={onRemoveImage}>Remove</button>
+				</div>
+			{:else}
+				<div class="dz-wrap">
 					<DropZone on:file={(e) => onHandleFile(e.detail.file)} />
 				</div>
-
-				{#if imageDataUrl}
-					<div class="thumbRow" style="align-items:center">
-						<img
-							src={imageDataUrl}
-							alt="preview"
-							class="card-thumb"
-							style="height: 120px;width: 100%;"
-						/>
-						<button class="btn small ghost" on:click={onRemoveImage}>Remove</button>
-					</div>
-				{/if}
-			</div>
+			{/if}
 		</label>
 
 		<label class="field">
@@ -69,7 +60,7 @@
 			</div>
 		</label>
 
-		<button class="btn primary" on:click={onAddCard} disabled={!canAddCard}> Add Card </button>
+		<button class="btn primary" on:click={onAddCard} disabled={!canAddCard}>Add Card</button>
 	</div>
 </div>
 
@@ -127,22 +118,15 @@
 		font-size: 12px;
 	}
 
-	.card-thumb {
-		width: 52px;
-		height: 72px;
-		object-fit: cover;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border-2);
-	}
-
 	.topbar {
 		position: sticky;
 		top: 0;
 		z-index: 20;
-		display: grid;
-		grid-template-columns: auto 1fr auto;
-		gap: 16px;
-		padding: 12px 20px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 0;
+		padding: 10px 20px;
 		border-bottom: 1px solid var(--border);
 		backdrop-filter: blur(20px) saturate(180%);
 		background: var(--topbar-bg);
@@ -151,15 +135,22 @@
 		display: flex;
 		gap: 8px;
 		align-items: center;
+		flex-shrink: 0;
+	}
+	.sep {
+		width: 1px;
+		height: 32px;
+		background: var(--border-2);
+		margin: 0 16px;
+		flex-shrink: 0;
 	}
 	.controls {
 		display: flex;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		gap: 10px;
-		align-items: end;
-	}
-	.grow {
+		align-items: center;
 		flex: 1;
+		min-width: 0;
 	}
 
 	.field {
@@ -171,6 +162,7 @@
 		text-transform: uppercase;
 		color: var(--text-muted);
 		gap: 4px;
+		flex-shrink: 0;
 	}
 	.field input,
 	.field textarea {
@@ -178,10 +170,12 @@
 		border-radius: var(--radius-sm);
 		padding: 8px 12px;
 		font-size: 14px;
-		min-width: 200px;
 		background: var(--surface);
 		color: var(--text);
 		transition: border-color 0.15s, box-shadow 0.15s;
+	}
+	.field input {
+		width: 220px;
 	}
 	.field input:focus,
 	.field textarea:focus {
@@ -190,8 +184,8 @@
 		box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
 	}
 	.field textarea {
-		width: 320px;
-		height: 88px;
+		width: 240px;
+		height: 56px;
 		resize: none;
 		font-family: inherit;
 	}
@@ -207,9 +201,45 @@
 		color: #e05252;
 	}
 
-	.thumbRow {
+	.dz-wrap {
+		width: 200px;
+	}
+	.dz-wrap :global(.dz) {
+		min-width: unset;
+		min-height: 56px;
+		border-radius: 8px;
+	}
+	.dz-wrap :global(.hint) {
+		padding: 8px 12px;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+		text-align: left;
+	}
+	.dz-wrap :global(.icon) {
+		font-size: 18px;
+		margin-bottom: 0;
+	}
+	.dz-wrap :global(.title) {
+		font-size: 11px;
+	}
+	.dz-wrap :global(.sub) {
+		font-size: 10px;
+		margin-top: 1px;
+	}
+
+	.thumb-row {
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		height: 56px;
+	}
+	.card-thumb {
+		height: 48px;
+		width: auto;
+		object-fit: cover;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-2);
 	}
 </style>
