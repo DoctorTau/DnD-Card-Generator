@@ -440,6 +440,12 @@
 		display: none !important;
 	}
 
+	/* Hide blank slots during export — keep grid position intact (visibility vs display) */
+	:root[data-exporting='true'] :global(.card.blank-slot) {
+		visibility: hidden !important;
+		border: none !important;
+	}
+
 	.tips-wrap {
 		margin: 0 auto;
 		max-width: 52rem;

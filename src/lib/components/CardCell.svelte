@@ -27,8 +27,9 @@
 <div class="cell">
 	<div class="card" class:blank-slot={isBlank} style="width:{mm(cardW)};height:{mm(cardH)};">
 		{#if isBlank}
-			<!-- Empty slot: do not display full card, only a minimal placeholder to save ink -->
-			<div class="blank-placeholder"></div>
+			<div class="blank-placeholder">
+				<span class="blank-label">Empty</span>
+			</div>
 		{:else}
 			{#if useParchment}
 				<div class="parch" style="background:{parchmentCSS(parchmentIntensity)}"></div>
@@ -73,12 +74,24 @@
 		background: white;
 	}
 	.card.blank-slot {
-		border: none !important;
-		background: transparent !important;
+		border: 1.5px dashed #c4c4c4 !important;
+		background: rgba(255, 255, 255, 0.04) !important;
 		box-shadow: none !important;
 	}
-	.card.blank-slot .blank-placeholder {
-		display: none;
+	.blank-placeholder {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.blank-label {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: #c4c4c4;
+		user-select: none;
 	}
 	.parch {
 		position: absolute;
