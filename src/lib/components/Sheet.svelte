@@ -56,7 +56,7 @@
       gap: {gap}mm;
     "
 		>
-			{#each cellsForRender as card, i}
+			{#each cellsForRender as card, i (card.id)}
 				<CardCell
 					{mode}
 					{card}
@@ -75,6 +75,7 @@
 		</div>
 
 		<div class="label">A4 210×297mm ({mode.toUpperCase()})</div>
+		<div class="canvas-note">Canvas is dark for screen preview — PDF exports as white</div>
 	</div>
 </div>
 
@@ -88,7 +89,7 @@
 		position: relative;
 		width: 210mm;
 		height: 297mm;
-		background: white;
+		background: var(--canvas-bg, white);
 		border: 1px solid var(--border, #e5e7eb);
 		border-radius: 12px;
 		box-shadow: 0 10px 36px rgba(0, 0, 0, 0.18);
@@ -106,5 +107,17 @@
 		font-size: 10px;
 		color: var(--sheet-label);
 		user-select: none;
+	}
+	.canvas-note {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		bottom: 10px;
+		font-size: 8.5px;
+		color: var(--canvas-note-color, transparent);
+		pointer-events: none;
+		user-select: none;
+		white-space: nowrap;
+		letter-spacing: 0.04em;
 	}
 </style>

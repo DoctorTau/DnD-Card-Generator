@@ -35,7 +35,7 @@
 		<div class="sub">PNG · JPEG · WebP — up to 50 MB</div>
 	</div>
 
-	<input class="hidden" type="file" accept="image/*" bind:this={fileInput} on:change={onPick} />
+	<input class="hidden" type="file" accept="image/*" bind:this={fileInput} on:change={onPick} on:click|stopPropagation />
 </div>
 
 <style>

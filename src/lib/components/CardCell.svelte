@@ -73,6 +73,15 @@
 		overflow: hidden;
 		background: white;
 	}
+	.card:not(.blank-slot) {
+		animation: cardReveal 360ms cubic-bezier(0.23, 1, 0.32, 1) both;
+	}
+	@keyframes cardReveal {
+		from {
+			opacity: 0;
+			transform: scale(0.86) translateY(12px);
+		}
+	}
 	.card.blank-slot {
 		border: 1.5px dashed #c4c4c4 !important;
 		background: rgba(255, 255, 255, 0.04) !important;

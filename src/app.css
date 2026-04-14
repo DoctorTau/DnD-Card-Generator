@@ -26,12 +26,16 @@
   --shadow-lg:   0 16px 48px rgba(0,0,0,0.6);
 
   /* Component-specific */
-  --topbar-bg:   rgba(14,12,20,0.82);
-  --dz-bg:       rgba(30,26,42,0.6);
-  --dz-bg-hover: rgba(37,32,56,0.8);
-  --dz-sub:      #7a6e94;
-  --sheet-label: #6b5c8a;
-  --input-num-bg:#16121f;
+  --topbar-bg:        rgba(14,12,20,0.82);
+  --dz-bg:            rgba(30,26,42,0.6);
+  --dz-bg-hover:      rgba(37,32,56,0.8);
+  --dz-sub:           #7a6e94;
+  --sheet-label:      #6b5c8a;
+  --input-num-bg:     #16121f;
+
+  /* Canvas */
+  --canvas-bg:        #17131f;
+  --canvas-note-color: rgba(107, 92, 138, 0.6);
 }
 
 /* === Light theme (system preference) === */
@@ -58,12 +62,16 @@
     --shadow-md:   0 6px 24px rgba(0,0,0,0.12);
     --shadow-lg:   0 16px 48px rgba(0,0,0,0.15);
 
-    --topbar-bg:   rgba(240,235,224,0.88);
-    --dz-bg:       rgba(255,252,245,0.75);
-    --dz-bg-hover: rgba(245,240,230,0.95);
-    --dz-sub:      #8b7050;
-    --sheet-label: #a89070;
-    --input-num-bg:#faf6ef;
+    --topbar-bg:        rgba(240,235,224,0.88);
+    --dz-bg:            rgba(255,252,245,0.75);
+    --dz-bg-hover:      rgba(245,240,230,0.95);
+    --dz-sub:           #8b7050;
+    --sheet-label:      #a89070;
+    --input-num-bg:     #faf6ef;
+
+    /* Canvas — light mode: natural white */
+    --canvas-bg:        white;
+    --canvas-note-color: transparent;
   }
 }
 
@@ -91,6 +99,12 @@ body {
   }
 }
 
+/* Canvas: force white during PDF export and print */
+:root[data-exporting='true'] {
+  --canvas-bg: white;
+  --canvas-note-color: transparent;
+}
+
 /* Печать: A4 без полей, точные цвета */
 @page {
   size: A4;
@@ -98,6 +112,11 @@ body {
 }
 
 @media print {
+  :root {
+    --canvas-bg: white;
+    --canvas-note-color: transparent;
+  }
+
   .noprint {
     display: none !important;
   }

@@ -37,7 +37,7 @@
     <div class="title">{label}</div>
     <div class="sub">PNG/JPEG. Max ~50 MB (зависит от браузера).</div>
   </div>
-  <input bind:this={fileInput} class="hidden" type="file" {accept} on:change={onPick} />
+  <input bind:this={fileInput} class="hidden" type="file" {accept} on:change={onPick} on:click|stopPropagation />
 </div>
 
 <style>

@@ -12,11 +12,12 @@
 	export let parchmentIntensity: number;
 	export let mookUrl: string;
 	export let coverUrl: string;
+	export let el: HTMLElement | undefined = undefined;
 
 	const scale = 0.8;
 </script>
 
-<div class="wrap" style="width:{cardW}mm;height:{cardH}mm;transform:scale({scale})">
+<div class="wrap" bind:this={el} style="width:{cardW}mm;height:{cardH}mm;transform:scale({scale})">
 	<CardCell
 		{mode}
 		{card}

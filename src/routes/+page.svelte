@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import DropZone from '$lib/components/common/DropZone.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
@@ -7,6 +7,8 @@
 	import CardPreview from '$lib/components/CardPreview.svelte';
 	import { browser } from '$app/environment';
 	import { generatePdf } from '$lib/utils/pdfExport';
+	import { fly, slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	// ---------- Types ----------
 	type Card = { id: string; name: string; img: string; desc?: string };
@@ -37,6 +39,10 @@
 
 	// Preview
 	let previewMode: 'front' | 'back' = 'front';
+	let previewCardEl: HTMLElement | undefined;
+	let pvEl: HTMLElement | undefined;
+	let flying = false;
+	let pdfLoading = false;
 
 	// Fonts
 	let mookUrl = '';
@@ -226,16 +232,95 @@
 	}
 
 	async function addCard() {
-		if (!imageDataUrl || !name.trim()) return;
+		if (!imageDataUrl || !name.trim() || flying) return;
 		if (desc.length > DESC_LIMIT) return;
+		flying = true;
 		let finalImg = imageDataUrl;
 		if (removeBgEnabled && autoRemoveOnAdd) finalImg = await tryRemoveBg(finalImg);
+
+		// flyCardToSheet resolves early (at ~68% of animation) so card appears as ghost lands
+		await flyCardToSheet(finalImg);
+
 		cards = [
 			...cards,
 			{ id: crypto.randomUUID(), name: name.trim(), img: finalImg, desc: desc.trim() || undefined }
 		];
 		name = '';
 		desc = '';
+		imageDataUrl = null; // clear drop zone
+		flying = false;
+
+		// Sheet landing glow fires in sync with card appearance
+		requestAnimationFrame(() => {
+			const a4 = document.querySelector<HTMLElement>('.a4');
+			if (a4) {
+				a4.classList.remove('sheet-land');
+				void a4.offsetWidth;
+				a4.classList.add('sheet-land');
+				a4.addEventListener('animationend', () => a4.classList.remove('sheet-land'), { once: true });
+			}
+		});
+	}
+
+	async function flyCardToSheet(imgSrc: string): Promise<void> {
+		if (!previewCardEl || !browser) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+		// getBoundingClientRect accounts for the 0.8 scale on CardPreview
+		const from = previewCardEl.getBoundingClientRect();
+		if (from.width === 0) return;
+
+		// Target: first blank slot = exact future position of this card
+		const targetEl =
+			document.querySelector<HTMLElement>('.a4 .card.blank-slot') ??
+			document.querySelector<HTMLElement>('.a4');
+		const to = targetEl?.getBoundingClientRect();
+		if (!to) return;
+
+		const dx = to.left - from.left;
+		const dy = to.top - from.top;
+		// Scale ghost to match the actual card slot size so it "snaps" in place
+		const finalScale = to.width / from.width;
+
+		const DURATION = 380;
+		const LAND_AT = Math.round(DURATION * 0.6); // resolve here → card appears while ghost fades
+
+		return new Promise((resolve) => {
+			const ghost = document.createElement('div');
+			Object.assign(ghost.style, {
+				position: 'fixed',
+				top: `${from.top}px`,
+				left: `${from.left}px`,
+				width: `${from.width}px`,
+				height: `${from.height}px`,
+				pointerEvents: 'none',
+				zIndex: '9999',
+				borderRadius: '3mm',
+				overflow: 'hidden',
+				willChange: 'transform, opacity',
+				boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.35)'
+			});
+			const img = document.createElement('img');
+			img.src = imgSrc;
+			Object.assign(img.style, { width: '100%', height: '100%', objectFit: 'cover', display: 'block' });
+			ghost.appendChild(img);
+			document.body.appendChild(ghost);
+
+			const anim = ghost.animate(
+				[
+					{ transform: 'translate(0,0) scale(1) rotate(-4deg)', opacity: 1 },
+					{ transform: `translate(${dx}px,${dy}px) scale(${finalScale}) rotate(0deg)`, opacity: 0 }
+				],
+				{ duration: DURATION, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' }
+			);
+
+			// Resolve early so card is added and starts its own animation
+			setTimeout(resolve, LAND_AT);
+
+			const cleanup = () => ghost.remove();
+			anim.onfinish = cleanup;
+			anim.oncancel = cleanup;
+		});
 	}
 	function removeCard(id: string) {
 		cards = cards.filter((c) => c.id !== id);
@@ -246,8 +331,30 @@
 
 	// ---------- PDF export ----------
 	async function makePdf() {
-		if (!browser) return;
-		await generatePdf({ cardW, cardH, fitMode });
+		if (!browser || pdfLoading) return;
+		pdfLoading = true;
+		try { await generatePdf({ cardW, cardH, fitMode }); }
+		finally { pdfLoading = false; }
+	}
+
+	// ---------- Preview flip ----------
+	async function switchPreviewMode(newMode: 'front' | 'back') {
+		if (newMode === previewMode) return;
+		if (!browser || !pvEl || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			previewMode = newMode;
+			return;
+		}
+		const out = pvEl.animate(
+			[{ opacity: 1, transform: 'rotateY(0deg)' }, { opacity: 0, transform: 'rotateY(90deg)' }],
+			{ duration: 140, easing: 'cubic-bezier(0.55,0,1,0.45)', fill: 'forwards' }
+		);
+		await out.finished;
+		previewMode = newMode;
+		await tick();
+		pvEl.animate(
+			[{ opacity: 0, transform: 'rotateY(-90deg)' }, { opacity: 1, transform: 'rotateY(0deg)' }],
+			{ duration: 140, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' }
+		);
 	}
 </script>
 
@@ -266,6 +373,8 @@
 	bind:desc
 	bind:imageDataUrl
 	bind:showLayout
+	{flying}
+	{pdfLoading}
 	onMakePdf={makePdf}
 	onClearAll={clearAll}
 	onToggleLayout={() => (showLayout = !showLayout)}
@@ -281,30 +390,32 @@
 	<!-- Left column: layout controls + printable region -->
 	<div class="leftcol" id="print-area">
 		{#if showLayout}
-			<LayoutSettings
-				bind:cardW
-				bind:cardH
-				bind:gap
-				bind:cols
-				bind:rows
-				bind:nameBandHeight
-				bind:nameSize
-				bind:showCrop
-				bind:fitMode
-				bind:generateBacks
-				bind:useParchment
-				bind:parchmentIntensity
-				bind:coverUrl
-				bind:mookUrl
-				bind:removeBgEnabled
-				bind:bgColor
-				bind:tolerance
-				bind:autoRemoveOnAdd
-				bind:imageDataUrl
-				sheetPaddingX={sheetPadding.padX}
-				sheetPaddingY={sheetPadding.padY}
-				onApplyRemovalToPreview={applyRemovalToPreview}
-			/>
+			<div transition:slide={{ duration: 280, easing: cubicOut }}>
+				<LayoutSettings
+					bind:cardW
+					bind:cardH
+					bind:gap
+					bind:cols
+					bind:rows
+					bind:nameBandHeight
+					bind:nameSize
+					bind:showCrop
+					bind:fitMode
+					bind:generateBacks
+					bind:useParchment
+					bind:parchmentIntensity
+					bind:coverUrl
+					bind:mookUrl
+					bind:removeBgEnabled
+					bind:bgColor
+					bind:tolerance
+					bind:autoRemoveOnAdd
+					bind:imageDataUrl
+					sheetPaddingX={sheetPadding.padX}
+					sheetPaddingY={sheetPadding.padY}
+					onApplyRemovalToPreview={applyRemovalToPreview}
+				/>
+			</div>
 		{/if}
 
 		<!-- Printable region follows -->
@@ -364,16 +475,16 @@
 				<h3>Live Preview</h3>
 				<div class="switch">
 					<label>
-						<input type="radio" name="pmode" value="front" bind:group={previewMode} />
+						<input type="radio" name="pmode" value="front" checked={previewMode === 'front'} on:change={() => switchPreviewMode('front')} />
 						<span>Front</span>
 					</label>
 					<label>
-						<input type="radio" name="pmode" value="back" bind:group={previewMode} />
+						<input type="radio" name="pmode" value="back" checked={previewMode === 'back'} on:change={() => switchPreviewMode('back')} />
 						<span>Back</span>
 					</label>
 				</div>
 			</div>
-			<div class="pv">
+			<div class="pv" bind:this={pvEl}>
 				<CardPreview
 					mode={previewMode}
 					card={previewCard}
@@ -387,6 +498,7 @@
 					{parchmentIntensity}
 					{mookUrl}
 					{coverUrl}
+					bind:el={previewCardEl}
 				/>
 			</div>
 			<div class="muted">Preview only — click "Add Card" to save.</div>
@@ -394,19 +506,25 @@
 
 		<div class="section-header">
 			<h2>Cards in project</h2>
-			<span class="count-badge">{cards.length}</span>
+			{#key cards.length}
+				<span class="count-badge">{cards.length}</span>
+			{/key}
 		</div>
 
 		<div class="cards-list">
 			{#if cards.length === 0}
-				<div class="empty-state">
+				<div class="empty-state" in:fly={{ y: 6, duration: 200, easing: cubicOut }}>
 					<div class="empty-icon">🃏</div>
 					No cards yet — add the first one above.
 				</div>
 			{/if}
 
 			{#each cards as c (c.id)}
-				<div class="item">
+				<div
+					class="item"
+					in:fly={{ x: 18, duration: 240, easing: cubicOut }}
+					out:fly={{ x: 18, duration: 160, easing: cubicOut }}
+				>
 					<img src={c.img} alt="" class="card-thumb" />
 					<div class="meta">
 						<div class="title" style="font-family:'Alegreya SC', serif">{c.name}</div>
@@ -432,6 +550,36 @@
 </div>
 
 <style>
+	/* Sheet landing glow */
+	:global(.a4.sheet-land) {
+		animation: sheetLandGlow 720ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+	}
+	@keyframes sheetLandGlow {
+		0% {
+			box-shadow: 0 10px 36px rgba(0, 0, 0, 0.18);
+		}
+		22% {
+			box-shadow:
+				0 10px 36px rgba(0, 0, 0, 0.18),
+				0 0 60px 14px rgba(201, 168, 76, 0.28),
+				inset 0 0 24px rgba(201, 168, 76, 0.07);
+		}
+		100% {
+			box-shadow: 0 10px 36px rgba(0, 0, 0, 0.18);
+		}
+	}
+
+	/* Count badge pop on change */
+	.count-badge {
+		animation: badgePop 340ms cubic-bezier(0.23, 1, 0.32, 1) both;
+	}
+	@keyframes badgePop {
+		from {
+			transform: scale(1.55);
+			opacity: 0.6;
+		}
+	}
+
 	/* Hide screen UI during PDF export */
 	:root[data-exporting='true'] :global(.topbar),
 	:root[data-exporting='true'] .rightcol,
@@ -502,6 +650,7 @@
 	.leftcol {
 		display: grid;
 		gap: 16px;
+		animation: colEnter 500ms cubic-bezier(0.23, 1, 0.32, 1) both;
 	}
 	.rightcol {
 		position: sticky;
@@ -510,6 +659,16 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+		animation: colEnter 500ms cubic-bezier(0.23, 1, 0.32, 1) 100ms both;
+	}
+	@keyframes colEnter {
+		from {
+			opacity: 0;
+			transform: translateY(16px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.leftcol, .rightcol { animation: none; }
 	}
 
 	/* Preview panel */
