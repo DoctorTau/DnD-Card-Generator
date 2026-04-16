@@ -2,8 +2,18 @@
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
+
+	/** Toolbar row: short height, solid border, optional copy overrides */
+	export let compact = false;
+	export let line1: string | undefined = undefined;
+	export let line2: string | undefined = undefined;
+	export let hideLine2 = false;
+
 	let dzHover = false;
 	let fileInput: HTMLInputElement | null = null;
+
+	$: titleText = line1 ?? 'Drop image or click to browse';
+	$: subText = hideLine2 ? null : (line2 ?? 'PNG · JPEG · WebP — up to 50 MB');
 
 	function onPick(e: Event) {
 		const f = (e.target as HTMLInputElement).files?.[0];
@@ -19,6 +29,7 @@
 
 <div
 	class="dz"
+	class:compact
 	data-hovering={dzHover}
 	on:dragover|preventDefault={() => (dzHover = true)}
 	on:dragleave={() => (dzHover = false)}
@@ -29,10 +40,14 @@
 	on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput?.click()}
 	aria-label="Upload image"
 >
-	<div class="hint">
+	<div class="hint" class:compact>
 		<div class="icon">🖼</div>
-		<div class="title">Drop image or click to browse</div>
-		<div class="sub">PNG · JPEG · WebP — up to 50 MB</div>
+		<div class="text-block">
+			<div class="title">{titleText}</div>
+			{#if subText}
+				<div class="sub">{subText}</div>
+			{/if}
+		</div>
 	</div>
 
 	<input class="hidden" type="file" accept="image/*" bind:this={fileInput} on:change={onPick} on:click|stopPropagation />
@@ -76,6 +91,24 @@
 		box-shadow: 0 0 30px var(--gold-dim);
 		transform: scale(0.999);
 	}
+	.dz.compact {
+		min-width: 0;
+		width: 100%;
+		min-height: 40px;
+		height: 40px;
+		border: 1px solid var(--border-2);
+		border-radius: var(--radius-sm);
+		background: var(--surface);
+	}
+	.dz.compact::before {
+		opacity: 0.5;
+	}
+	.dz.compact:hover {
+		box-shadow: none;
+	}
+	.dz.compact[data-hovering='true'] {
+		transform: none;
+	}
 	.dz:focus-visible {
 		outline: 2px solid var(--gold);
 		outline-offset: 2px;
@@ -88,16 +121,50 @@
 		padding: 16px;
 		position: relative;
 	}
+	.hint:not(.compact) {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+	.hint.compact {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+		text-align: left;
+		padding: 0 12px;
+		width: 100%;
+		height: 100%;
+	}
+	.text-block {
+		min-width: 0;
+	}
+	.hint.compact .text-block {
+		flex: 1;
+	}
 	.icon {
 		font-size: 28px;
 		margin-bottom: 8px;
 		opacity: 0.7;
+	}
+	.hint.compact .icon {
+		font-size: 18px;
+		margin-bottom: 0;
+		flex-shrink: 0;
 	}
 	.hint .title {
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--gold);
 		letter-spacing: 0.02em;
+	}
+	.hint.compact .title {
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.hint .sub {
 		font-size: 11px;

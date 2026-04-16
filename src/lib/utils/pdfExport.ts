@@ -1,21 +1,19 @@
 /**
  * PDF Export Utilities
- * Handles cropping images and generating PDF documents from card sheets.
  *
- * Why we pre-crop:
- *   html2canvas does NOT support the CSS `object-fit` property.  It ignores
- *   it and stretches images to fill the element's bounding box.  To fix this
- *   we bake the cover/contain crop into a new image BEFORE html2canvas runs,
- *   then set that image as the src with objectFit='fill'.  Because the baked
- *   image already has the same aspect ratio as the card, html2canvas's naive
- *   fill produces a pixel-perfect result.
+ * Why we swap <img> for <canvas> before html2canvas:
+ *   html2canvas does NOT support the CSS `object-fit` property — it always
+ *   stretches images to fill the element's bounding box.  Setting objectFit
+ *   via JS doesn't help because html2canvas re-reads the computed style and
+ *   ignores the property.
  *
- * Why data URLs instead of blob URLs:
- *   html2canvas maintains an internal image cache keyed by the src string.
- *   A blob URL is a new string every time, but html2canvas may re-fetch it
- *   using its own XHR which can race with the DOM update.  A data URL is
- *   self-contained in the attribute — html2canvas reads it synchronously and
- *   cannot use a stale cached copy of the original image.
+ *   The only reliable fix is to replace each <img class="art"> with a
+ *   <canvas> element that already has the correct cover/contain crop painted
+ *   on it.  html2canvas reads <canvas> pixel data natively (no objectFit
+ *   involved) and renders it at the element's CSS size × exportScale.
+ *
+ *   After html2canvas finishes the canvases are removed and the original
+ *   <img> elements are restored — the DOM returns to its normal state.
  */
 
 // ---------------------------------------------------------------------------
@@ -30,20 +28,8 @@ interface CropDimensions {
 }
 
 /**
- * Cover: scale the image so it fills the target, centre it, clip the overflow.
- *
- *   Wide image (imgRatio > targetRatio):
- *     Lock height to targetH → drawW = targetH × imgRatio (wider than target)
- *     offsetX = (targetW - drawW) / 2   ← negative → left edge starts outside canvas
- *     canvas.drawImage clips the overflow automatically.
- *
- *   Tall image (imgRatio ≤ targetRatio):
- *     Lock width to targetW → drawH = targetW / imgRatio (taller than target)
- *     offsetY = (targetH - drawH) / 2   ← negative → top edge starts outside canvas
- *
- * In both branches one of the offsets is negative.  That is intentional:
- * Canvas2D clips anything drawn outside its bounds, which is how the crop works.
- * The result is identical to CSS `object-fit: cover`.
+ * Cover: scale image to fill target, centre it, clip overflow.
+ * Replicates CSS `object-fit: cover; object-position: 50% 50%`.
  */
 function coverDims(ir: number, tr: number, tw: number, th: number): CropDimensions {
     if (ir > tr) {
@@ -57,8 +43,8 @@ function coverDims(ir: number, tr: number, tw: number, th: number): CropDimensio
 }
 
 /**
- * Contain: scale the image so it fits entirely inside the target (letterbox).
- * All offsets are ≥ 0 — the image never overflows the canvas.
+ * Contain: scale image to fit entirely inside target (letterbox).
+ * Replicates CSS `object-fit: contain; object-position: 50% 50%`.
  */
 function containDims(ir: number, tr: number, tw: number, th: number): CropDimensions {
     if (ir > tr) {
@@ -84,18 +70,12 @@ function cropDims(
 }
 
 // ---------------------------------------------------------------------------
-// Image cropping — returns a PNG data URL
+// Public crop helper — kept for any external consumers
 // ---------------------------------------------------------------------------
 
 /**
- * Loads `imgSrc`, draws it cropped to `targetW × targetH` using cover or
- * contain mode, and returns the result as a PNG data URL.
- *
- * Using a data URL (not a blob URL) guarantees html2canvas reads the value
- * directly from the src attribute and cannot use a cached copy of the
- * original image.
- *
- * Falls back to the original src on any error so the export still runs.
+ * Crops `imgSrc` to `targetW × targetH` using cover or contain mode and
+ * returns the result as a PNG data URL.
  */
 export function cropImageToDataUrl(
     imgSrc: string,
@@ -113,11 +93,9 @@ export function cropImageToDataUrl(
                 canvas.height = targetH;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) { resolve(imgSrc); return; }
-
                 const d = cropDims(img.naturalWidth, img.naturalHeight, targetW, targetH, mode);
                 ctx.clearRect(0, 0, targetW, targetH);
                 ctx.drawImage(img, d.offsetX, d.offsetY, d.drawW, d.drawH);
-
                 resolve(canvas.toDataURL('image/png'));
             } catch {
                 resolve(imgSrc);
@@ -132,68 +110,81 @@ export function cropImageToDataUrl(
 export { cropImageToDataUrl as cropImageToBlobUrl };
 
 // ---------------------------------------------------------------------------
-// DOM image preparation / restoration
+// Canvas-swap approach: replace each img.art with a <canvas> before capture
 // ---------------------------------------------------------------------------
 
-interface ImageRestoreData {
-    originalSrcs: Map<HTMLImageElement, string>;
-    originalStyles: Map<HTMLImageElement, string | null>;
+interface SwapEntry {
+    img: HTMLImageElement;
+    canvas: HTMLCanvasElement;
 }
 
 /**
  * For every `img.art` element:
- *   1. Save the current src and style attribute.
- *   2. Bake a cover/contain crop into a PNG data URL at export resolution.
- *   3. Replace the element's src with that data URL and set objectFit='fill'.
+ *   1. Create an offscreen canvas ("tmp file") at the element's exact pixel
+ *      dimensions (clientWidth/clientHeight × exportScale).
+ *   2. Draw the cover/contain-cropped image directly onto that canvas.
+ *   3. Insert the canvas in place of the img (same CSS position / size).
+ *   4. Hide the img.
  *
- * After this every art image has the correct aspect ratio baked in, so
- * html2canvas's naive fill scaling produces no distortion.
+ * html2canvas reads <canvas> pixel data natively, so the crop is rendered
+ * exactly as drawn — no objectFit interpretation, no stretching.
+ *
+ * Returns a list of swaps so restoreImages() can undo everything.
  */
-async function prepareImages(
+function prepareImages(
     images: HTMLImageElement[],
-    targetW: number,
-    targetH: number,
+    exportScale: number,
     mode: 'cover' | 'contain'
-): Promise<ImageRestoreData> {
-    const originalSrcs = new Map<HTMLImageElement, string>();
-    const originalStyles = new Map<HTMLImageElement, string | null>();
+): SwapEntry[] {
+    const swaps: SwapEntry[] = [];
 
     for (const img of images) {
-        // Skip elements that have no src or haven't decoded yet
         if (!img.src || !img.naturalWidth) continue;
 
-        originalSrcs.set(img, img.src);
-        originalStyles.set(img, img.getAttribute('style'));
+        const w = img.clientWidth;
+        const h = img.clientHeight;
+        if (!w || !h) continue;
 
-        const dataUrl = await cropImageToDataUrl(img.src, mode, targetW, targetH);
-        img.src = dataUrl;
-        // Explicitly override objectFit so the browser does not apply any
-        // additional scaling on top of the already-cropped image.
-        img.style.objectFit = 'fill';
+        // ── "tmp file": canvas with the correctly cropped image ──────────
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(w * exportScale);
+        canvas.height = Math.round(h * exportScale);
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            const d = cropDims(img.naturalWidth, img.naturalHeight, canvas.width, canvas.height, mode);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, d.offsetX, d.offsetY, d.drawW, d.drawH);
+        }
+
+        // Give the canvas the same CSS layout as the img it replaces.
+        // Explicit px values are the safest choice: html2canvas won't have to
+        // resolve percentage values or inherit anything.
+        canvas.style.cssText = `
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: ${w}px;
+            height: ${h}px;
+            display: block;
+        `;
+
+        // Swap: insert canvas, hide img
+        img.parentElement!.insertBefore(canvas, img);
+        img.style.display = 'none';
+
+        swaps.push({ img, canvas });
     }
 
-    return { originalSrcs, originalStyles };
+    return swaps;
 }
 
 /**
- * Wait for every modified image to be fully decoded before html2canvas runs.
- * img.decode() resolves only when the image is ready to paint, which is the
- * earliest safe point to call html2canvas.
+ * Remove all temporary canvases and restore the original img elements.
  */
-async function waitForImages(images: HTMLImageElement[]): Promise<void> {
-    await Promise.all(
-        images.map((img) => img.decode().catch(() => { /* broken images are fine */ }))
-    );
-}
-
-/**
- * Restore all elements exactly as they were before prepareImages().
- */
-function restoreImages({ originalSrcs, originalStyles }: ImageRestoreData): void {
-    for (const [img, src] of originalSrcs) img.src = src;
-    for (const [img, style] of originalStyles) {
-        if (style !== null) img.setAttribute('style', style);
-        else img.removeAttribute('style');
+function restoreImages(swaps: SwapEntry[]): void {
+    for (const { img, canvas } of swaps) {
+        canvas.remove();
+        img.style.removeProperty('display');
     }
 }
 
@@ -202,8 +193,6 @@ function restoreImages({ originalSrcs, originalStyles }: ImageRestoreData): void
 // ---------------------------------------------------------------------------
 
 export interface PdfExportOptions {
-    cardW: number;
-    cardH: number;
     fitMode: 'cover' | 'contain';
     printAreaSelector?: string;
     sheetSelector?: string;
@@ -215,16 +204,13 @@ export interface PdfExportOptions {
  *
  * Flow:
  *  1. Find all .a4 sheets and img.art images inside #print-area.
- *  2. For each art image, bake a cover/contain crop (PNG data URL) at the
- *     exact pixel dimensions html2canvas will render the card at.
- *  3. Wait for all images to decode their new src.
- *  4. Capture each sheet with html2canvas → add to jsPDF.
- *  5. Restore original srcs and styles.
+ *  2. For each img.art: create a correctly-cropped <canvas> ("tmp file") and
+ *     swap it in, hiding the original img.
+ *  3. Capture each sheet with html2canvas (canvases render pixel-perfectly).
+ *  4. Remove the tmp canvases and restore the original imgs.
  */
 export async function generatePdf(options: PdfExportOptions): Promise<void> {
     const {
-        cardW,
-        cardH,
         fitMode,
         printAreaSelector = '#print-area',
         sheetSelector = '.a4',
@@ -236,18 +222,12 @@ export async function generatePdf(options: PdfExportOptions): Promise<void> {
         import('html2canvas')
     ]);
 
-    // Minimum scale 2 to ensure the PDF is crisp on print (≥192 dpi).
+    // Minimum scale 2 → crisp output at ≥192 dpi.
     const exportScale = Math.max(2, window.devicePixelRatio || 1);
-
-    // At 96 dpi, 1 mm = 96/25.4 ≈ 3.7795 CSS px.
-    // Multiplied by exportScale gives the canvas pixels html2canvas uses per mm.
-    const mmToPx = (96 / 25.4) * exportScale;
-    const targetW = Math.round(cardW * mmToPx);
-    const targetH = Math.round(cardH * mmToPx);
 
     document.documentElement.setAttribute('data-exporting', 'true');
 
-    let restoreData: ImageRestoreData = { originalSrcs: new Map(), originalStyles: new Map() };
+    let swaps: SwapEntry[] = [];
 
     try {
         const sheets = Array.from(
@@ -259,10 +239,8 @@ export async function generatePdf(options: PdfExportOptions): Promise<void> {
             document.querySelectorAll<HTMLImageElement>(`${printAreaSelector} ${imageSelector}`)
         );
 
-        restoreData = await prepareImages(images, targetW, targetH, fitMode);
-
-        // Decode must complete before html2canvas reads the DOM.
-        await waitForImages(images);
+        // Swap each img.art → cropped canvas (synchronous, no async needed)
+        swaps = prepareImages(images, exportScale, fitMode);
 
         const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
@@ -275,8 +253,6 @@ export async function generatePdf(options: PdfExportOptions): Promise<void> {
                 logging: false
             });
 
-            // JPEG at 0.95 is the only lossy step in the whole pipeline.
-            // Everything before this (canvas crop → PNG data URL) is lossless.
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             if (i > 0) pdf.addPage();
             pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
@@ -284,7 +260,8 @@ export async function generatePdf(options: PdfExportOptions): Promise<void> {
 
         pdf.save('dnd-cards.pdf');
     } finally {
-        restoreImages(restoreData);
+        // ── "delete tmp files" ────────────────────────────────────────────
+        restoreImages(swaps);
         document.documentElement.removeAttribute('data-exporting');
     }
 }

@@ -333,7 +333,7 @@
 	async function makePdf() {
 		if (!browser || pdfLoading) return;
 		pdfLoading = true;
-		try { await generatePdf({ cardW, cardH, fitMode }); }
+		try { await generatePdf({ fitMode }); }
 		finally { pdfLoading = false; }
 	}
 
@@ -373,6 +373,7 @@
 	bind:desc
 	bind:imageDataUrl
 	bind:showLayout
+	sheetFootnote={`a4 210×297mm (${previewMode})`}
 	{flying}
 	{pdfLoading}
 	onMakePdf={makePdf}
@@ -594,6 +595,13 @@
 		border: none !important;
 	}
 
+	/* Freeze card animations during export so html2canvas captures the final state */
+	:root[data-exporting='true'] :global(.card) {
+		animation: none !important;
+		opacity: 1 !important;
+		transform: none !important;
+	}
+
 	.tips-wrap {
 		margin: 0 auto;
 		max-width: 52rem;
@@ -654,7 +662,7 @@
 	}
 	.rightcol {
 		position: sticky;
-		top: 76px;
+		top: 100px;
 		height: fit-content;
 		display: flex;
 		flex-direction: column;
