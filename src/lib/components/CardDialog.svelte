@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
+	import { createEventDispatcher, onMount, tick } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import DropZone from '$lib/components/common/DropZone.svelte';
@@ -142,9 +142,7 @@
 
 	onMount(() => {
 		document.addEventListener('keydown', handleKeydown);
-	});
-	onDestroy(() => {
-		document.removeEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
 	});
 
 	// Focus name input when dialog opens
