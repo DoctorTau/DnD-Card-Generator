@@ -96,15 +96,80 @@
     dispatch('blur');
   }
 
+  function sanitizeHtml(raw: string): string {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = raw;
+
+    const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'P', 'BR', 'DIV', 'SPAN']);
+    const ALLOWED_SPAN_STYLES = ['font-weight', 'font-style', 'text-decoration'];
+
+    function walk(node: Node): Node | null {
+      if (node.nodeType === Node.TEXT_NODE) return node.cloneNode();
+      if (node.nodeType !== Node.ELEMENT_NODE) return null;
+      const el = node as Element;
+      const tag = el.tagName;
+
+      const children: Node[] = [];
+      el.childNodes.forEach((child) => {
+        const c = walk(child);
+        if (c) children.push(c);
+      });
+
+      if (!ALLOWED.has(tag)) {
+        // Unwrap — keep text children
+        const frag = document.createDocumentFragment();
+        children.forEach((c) => frag.appendChild(c));
+        return frag;
+      }
+
+      const out = document.createElement(tag.toLowerCase());
+      if (tag === 'SPAN') {
+        const style = el.getAttribute('style') ?? '';
+        const filtered = style
+          .split(';')
+          .map((s) => s.trim())
+          .filter((s) => ALLOWED_SPAN_STYLES.some((p) => s.startsWith(p)))
+          .join('; ');
+        if (filtered) out.setAttribute('style', filtered);
+      }
+      children.forEach((c) => out.appendChild(c));
+      return out;
+    }
+
+    const out = document.createElement('div');
+    tmp.childNodes.forEach((child) => {
+      const c = walk(child);
+      if (c) out.appendChild(c);
+    });
+    return out.innerHTML;
+  }
+
   function handlePaste(e: ClipboardEvent) {
     e.preventDefault();
-    const text = e.clipboardData?.getData('text/plain') ?? '';
-    if (!text) return;
     const currentText = editorEl.textContent ?? '';
     const remaining = Math.max(0, maxLength - currentText.length);
     if (remaining <= 0) return;
-    const toInsert = text.slice(0, remaining);
-    document.execCommand('insertText', false, toInsert);
+
+    const htmlData = e.clipboardData?.getData('text/html') ?? '';
+    if (htmlData) {
+      const sanitized = sanitizeHtml(htmlData);
+      // Check plain-text length of sanitized content
+      const tmpCheck = document.createElement('div');
+      tmpCheck.innerHTML = sanitized;
+      const plainLen = (tmpCheck.textContent ?? '').length;
+      if (plainLen <= remaining) {
+        document.execCommand('insertHTML', false, sanitized);
+      } else {
+        // Fallback: insert plain text truncated
+        const plain = (tmpCheck.textContent ?? '').slice(0, remaining);
+        document.execCommand('insertText', false, plain);
+      }
+    } else {
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (!text) return;
+      document.execCommand('insertText', false, text.slice(0, remaining));
+    }
+    handleInput();
   }
 
   onMount(async () => {
@@ -234,9 +299,6 @@
     on:paste={handlePaste}
   ></div>
 
-  <div class="counter" class:over={overLimit} aria-live="polite">
-    {textLen}/{maxLength}
-  </div>
 </div>
 
 <style>
@@ -350,16 +412,5 @@
     text-decoration: underline;
   }
 
-  .counter {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-align: right;
-    padding: 0 2px;
-    font-variant-numeric: tabular-nums;
-  }
 
-  .counter.over {
-    color: #e35d5d;
-    font-weight: 600;
-  }
 </style>

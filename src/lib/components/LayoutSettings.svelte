@@ -20,10 +20,8 @@
 	export let bgColor = '#ffffff';
 	export let tolerance = 32;
 	export let autoRemoveOnAdd = true;
-	export let imageDataUrl: string | null = null;
 	export let sheetPaddingX = 0;
 	export let sheetPaddingY = 0;
-	export let onApplyRemovalToPreview: () => void;
 
 	function clamp(v: number, lo: number, hi: number) {
 		return Math.min(hi, Math.max(lo, v));
@@ -78,14 +76,6 @@
 			setValue={(v) => (nameBandHeight = clamp(v, 8, 30))}
 			min={8}
 			max={30}
-		/>
-
-		<NumberField
-			label="Name font size (pt)"
-			value={nameSize}
-			setValue={(v) => (nameSize = clamp(v, 8, 28))}
-			min={8}
-			max={28}
 		/>
 
 		<label class="check"
@@ -147,9 +137,6 @@
 				min={0}
 				max={255}
 			/>
-			<button class="btn" on:click={onApplyRemovalToPreview} disabled={!imageDataUrl}
-				>Apply to preview</button
-			>
 			<label class="check"
 				><input type="checkbox" bind:checked={autoRemoveOnAdd} />
 				<span>Apply when adding cards</span></label
@@ -163,26 +150,6 @@
 </div>
 
 <style>
-	.btn {
-		border: 1px solid var(--border-2);
-		background: var(--surface);
-		color: var(--text);
-		border-radius: var(--radius-md);
-		padding: 8px 16px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.15s, border-color 0.15s;
-	}
-	.btn:hover {
-		background: var(--surface-2);
-		border-color: var(--gold);
-	}
-	.btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-
 	.layout-panel {
 		background: var(--surface);
 		border: 1px solid var(--border);

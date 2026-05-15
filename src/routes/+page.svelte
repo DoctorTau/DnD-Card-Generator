@@ -1,23 +1,21 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
-	import DropZone from '$lib/components/common/DropZone.svelte';
+	import { onMount } from 'svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import LayoutSettings from '$lib/components/LayoutSettings.svelte';
-	import CardPreview from '$lib/components/CardPreview.svelte';
+	import CardDialog from '$lib/components/CardDialog.svelte';
 	import { browser } from '$app/environment';
 	import { generatePdf } from '$lib/utils/pdfExport';
 	import { fly, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-
-	// ---------- Types ----------
-	type Card = { id: string; name: string; img: string; desc?: string };
+	import type { Card } from '$lib/components/CardCell.svelte';
 
 	// ---------- State ----------
-	let name = '';
-	let desc = '';
-	let imageDataUrl: string | null = null;
 	let cards: Card[] = [];
+
+	// Dialog
+	let dialogOpen = false;
+	let editingCard: Card | null = null;
 
 	// Layout
 	let cardW = 63.5,
@@ -37,11 +35,7 @@
 	let parchmentIntensity = 0.35;
 	let coverUrl = '';
 
-	// Preview
-	let previewMode: 'front' | 'back' = 'front';
-	let previewCardEl: HTMLElement | undefined;
-	let pvEl: HTMLElement | undefined;
-	let flying = false;
+	// State
 	let pdfLoading = false;
 
 	// Fonts
@@ -53,12 +47,6 @@
 	let tolerance = 32;
 	let autoRemoveOnAdd = true;
 
-	// Drag & drop
-	let dzHover = false;
-	let fileInput: HTMLInputElement | null = null;
-
-	// Limits
-	const DESC_LIMIT = 500;
 
 	// ---------- Head (fonts) ----------
 	// Alegreya SC is in <svelte:head> below; Mookmania is injected dynamically
@@ -97,12 +85,6 @@
 	$: slots = rows * cols;
 	$: pagesFront = paginate(cards, slots);
 	$: pagesBack = paginate(cards, slots);
-	$: previewCard = {
-		id: 'preview',
-		name: name || '(empty)',
-		img: imageDataUrl || '',
-		desc: desc.trim() || undefined
-	} as Card;
 
 	function paginate<T>(arr: T[], size: number): T[][] {
 		const out: T[][] = [];
@@ -110,8 +92,9 @@
 		if (out.length === 0) out.push([]);
 		return out;
 	}
-	function truncate(s: string, n: number) {
-		return s.length <= n ? s : s.slice(0, n - 1) + '…';
+	function truncatePlain(html: string, n: number) {
+		const plain = html.replace(/<[^>]*>/g, '');
+		return plain.length <= n ? plain : plain.slice(0, n - 1) + '…';
 	}
 	function clamp(v: number, lo: number, hi: number) {
 		return Math.min(hi, Math.max(lo, v));
@@ -123,14 +106,29 @@
 	function mm(n: number) {
 		return `${n}mm`;
 	}
-	function limitDesc() {
-		// measure plain-text length, not HTML length
-		const tmp = document.createElement('div');
-		tmp.innerHTML = desc;
-		if ((tmp.textContent ?? '').length > DESC_LIMIT) {
-			// truncate: keep the HTML but signal back — editor enforces the limit itself
-			// just clamp the raw string as fallback
-			desc = desc.slice(0, DESC_LIMIT * 6); // rough HTML budget
+
+	// ---------- Dialog ----------
+	function openDialog(cardToEdit: Card | null = null) {
+		editingCard = cardToEdit;
+		dialogOpen = true;
+	}
+
+	function handleDialogSave(saved: Card) {
+		dialogOpen = false;
+		if (editingCard) {
+			cards = cards.map((c) => (c.id === saved.id ? saved : c));
+			editingCard = null;
+		} else {
+			cards = [...cards, saved];
+			requestAnimationFrame(() => {
+				const a4 = document.querySelector<HTMLElement>('.a4');
+				if (a4) {
+					a4.classList.remove('sheet-land');
+					void a4.offsetWidth;
+					a4.classList.add('sheet-land');
+					a4.addEventListener('animationend', () => a4.classList.remove('sheet-land'), { once: true });
+				}
+			});
 		}
 	}
 
@@ -156,179 +154,6 @@
     `;
 	}
 
-	// ---------- Local chroma-key ----------
-	function hexToRgb(hex: string): [number, number, number] {
-		const s = hex.replace('#', '');
-		const n = parseInt(
-			s.length === 3
-				? s
-						.split('')
-						.map((c) => c + c)
-						.join('')
-				: s,
-			16
-		);
-		return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-	}
-	function loadImage(src: string): Promise<HTMLImageElement> {
-		return new Promise((resolve, reject) => {
-			const im = new Image();
-			im.crossOrigin = 'anonymous';
-			im.onload = () => resolve(im);
-			im.onerror = reject;
-			im.src = src;
-		});
-	}
-	async function chromaKey(dataUrl: string, hex: string, tol: number): Promise<string> {
-		const img = await loadImage(dataUrl);
-		const canvas = document.createElement('canvas');
-		canvas.width = img.width;
-		canvas.height = img.height;
-		const ctx = canvas.getContext('2d')!;
-		ctx.drawImage(img, 0, 0);
-		const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-		const [tr, tg, tb] = hexToRgb(hex);
-		const t2 = tol * tol;
-		for (let i = 0; i < imgData.data.length; i += 4) {
-			const r = imgData.data[i],
-				g = imgData.data[i + 1],
-				b = imgData.data[i + 2];
-			const dr = r - tr,
-				dg = g - tg,
-				db = b - tb;
-			const dist2 = dr * dr + dg * dg + db * db;
-			if (dist2 <= t2) imgData.data[i + 3] = 0;
-		}
-		ctx.putImageData(imgData, 0, 0);
-		return canvas.toDataURL('image/png');
-	}
-
-	// ---------- IO ----------
-	function fileToDataUrl(file: File): Promise<string> {
-		return new Promise((resolve, reject) => {
-			const reader = new FileReader();
-			reader.onload = () => resolve(String(reader.result));
-			reader.onerror = reject;
-			reader.readAsDataURL(file);
-		});
-	}
-	async function tryRemoveBg(dataUrl: string): Promise<string> {
-		return await chromaKey(dataUrl, bgColor, tolerance);
-	}
-	async function handleFile(file: File) {
-		const base64 = await fileToDataUrl(file);
-		imageDataUrl = base64;
-		if (removeBgEnabled && autoRemoveOnAdd) {
-			imageDataUrl = await tryRemoveBg(imageDataUrl);
-		}
-	}
-	async function onPickFile(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (!file) return;
-		await handleFile(file);
-	}
-	async function onDrop(e: DragEvent) {
-		dzHover = false;
-		const f = e.dataTransfer?.files?.[0];
-		if (f) await handleFile(f);
-	}
-
-	async function applyRemovalToPreview() {
-		if (!imageDataUrl) return;
-		imageDataUrl = await tryRemoveBg(imageDataUrl);
-	}
-
-	async function addCard() {
-		if (!imageDataUrl || !name.trim() || flying) return;
-		if (desc.length > DESC_LIMIT) return;
-		flying = true;
-		let finalImg = imageDataUrl;
-		if (removeBgEnabled && autoRemoveOnAdd) finalImg = await tryRemoveBg(finalImg);
-
-		// flyCardToSheet resolves early (at ~68% of animation) so card appears as ghost lands
-		await flyCardToSheet(finalImg);
-
-		cards = [
-			...cards,
-			{ id: crypto.randomUUID(), name: name.trim(), img: finalImg, desc: desc.trim() || undefined }
-		];
-		name = '';
-		desc = '';
-		imageDataUrl = null; // clear drop zone
-		flying = false;
-
-		// Sheet landing glow fires in sync with card appearance
-		requestAnimationFrame(() => {
-			const a4 = document.querySelector<HTMLElement>('.a4');
-			if (a4) {
-				a4.classList.remove('sheet-land');
-				void a4.offsetWidth;
-				a4.classList.add('sheet-land');
-				a4.addEventListener('animationend', () => a4.classList.remove('sheet-land'), { once: true });
-			}
-		});
-	}
-
-	async function flyCardToSheet(imgSrc: string): Promise<void> {
-		if (!previewCardEl || !browser) return;
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-		// getBoundingClientRect accounts for the 0.8 scale on CardPreview
-		const from = previewCardEl.getBoundingClientRect();
-		if (from.width === 0) return;
-
-		// Target: first blank slot = exact future position of this card
-		const targetEl =
-			document.querySelector<HTMLElement>('.a4 .card.blank-slot') ??
-			document.querySelector<HTMLElement>('.a4');
-		const to = targetEl?.getBoundingClientRect();
-		if (!to) return;
-
-		const dx = to.left - from.left;
-		const dy = to.top - from.top;
-		// Scale ghost to match the actual card slot size so it "snaps" in place
-		const finalScale = to.width / from.width;
-
-		const DURATION = 380;
-		const LAND_AT = Math.round(DURATION * 0.6); // resolve here → card appears while ghost fades
-
-		return new Promise((resolve) => {
-			const ghost = document.createElement('div');
-			Object.assign(ghost.style, {
-				position: 'fixed',
-				top: `${from.top}px`,
-				left: `${from.left}px`,
-				width: `${from.width}px`,
-				height: `${from.height}px`,
-				pointerEvents: 'none',
-				zIndex: '9999',
-				borderRadius: '3mm',
-				overflow: 'hidden',
-				willChange: 'transform, opacity',
-				boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.35)'
-			});
-			const img = document.createElement('img');
-			img.src = imgSrc;
-			Object.assign(img.style, { width: '100%', height: '100%', objectFit: 'cover', display: 'block' });
-			ghost.appendChild(img);
-			document.body.appendChild(ghost);
-
-			const anim = ghost.animate(
-				[
-					{ transform: 'translate(0,0) scale(1) rotate(-4deg)', opacity: 1 },
-					{ transform: `translate(${dx}px,${dy}px) scale(${finalScale}) rotate(0deg)`, opacity: 0 }
-				],
-				{ duration: DURATION, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' }
-			);
-
-			// Resolve early so card is added and starts its own animation
-			setTimeout(resolve, LAND_AT);
-
-			const cleanup = () => ghost.remove();
-			anim.onfinish = cleanup;
-			anim.oncancel = cleanup;
-		});
-	}
 	function removeCard(id: string) {
 		cards = cards.filter((c) => c.id !== id);
 	}
@@ -344,25 +169,7 @@
 		finally { pdfLoading = false; }
 	}
 
-	// ---------- Preview flip ----------
-	async function switchPreviewMode(newMode: 'front' | 'back') {
-		if (newMode === previewMode) return;
-		if (!browser || !pvEl || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			previewMode = newMode;
-			return;
-		}
-		const out = pvEl.animate(
-			[{ opacity: 1, transform: 'rotateY(0deg)' }, { opacity: 0, transform: 'rotateY(90deg)' }],
-			{ duration: 140, easing: 'cubic-bezier(0.55,0,1,0.45)', fill: 'forwards' }
-		);
-		await out.finished;
-		previewMode = newMode;
-		await tick();
-		pvEl.animate(
-			[{ opacity: 0, transform: 'rotateY(-90deg)' }, { opacity: 1, transform: 'rotateY(0deg)' }],
-			{ duration: 140, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' }
-		);
-	}
+
 </script>
 
 <svelte:head>
@@ -376,21 +183,32 @@
 
 <!-- ========== UI ========== -->
 <TopBar
-	bind:name
-	bind:desc
-	bind:imageDataUrl
 	bind:showLayout
-	sheetFootnote={`a4 210×297mm (${previewMode})`}
-	{flying}
+	sheetFootnote="a4 210×297mm"
 	{pdfLoading}
 	onMakePdf={makePdf}
 	onClearAll={clearAll}
 	onToggleLayout={() => (showLayout = !showLayout)}
-	onAddCard={addCard}
-	onRemoveImage={() => (imageDataUrl = null)}
-	onLimitDesc={limitDesc}
-	onHandleFile={handleFile}
-	on:descFocus={() => (previewMode = 'back')}
+	onOpenDialog={() => openDialog(null)}
+/>
+
+<CardDialog
+	bind:open={dialogOpen}
+	card={editingCard}
+	{cardW}
+	{cardH}
+	{nameBandHeight}
+	{nameSize}
+	{fitMode}
+	{useParchment}
+	{parchmentIntensity}
+	{mookUrl}
+	{coverUrl}
+	{removeBgEnabled}
+	{bgColor}
+	{tolerance}
+	on:save={(e) => handleDialogSave(e.detail)}
+	on:cancel={() => { dialogOpen = false; editingCard = null; }}
 />
 
 <!-- WORKSPACE -->
@@ -419,10 +237,8 @@
 					bind:bgColor
 					bind:tolerance
 					bind:autoRemoveOnAdd
-					bind:imageDataUrl
 					sheetPaddingX={sheetPadding.padX}
 					sheetPaddingY={sheetPadding.padY}
-					onApplyRemovalToPreview={applyRemovalToPreview}
 				/>
 			</div>
 		{/if}
@@ -475,40 +291,6 @@
 	</div>
 
 	<aside class="rightcol">
-		<div class="preview">
-			<div class="head">
-				<h3>Live Preview</h3>
-				<div class="switch">
-					<label>
-						<input type="radio" name="pmode" value="front" checked={previewMode === 'front'} on:change={() => switchPreviewMode('front')} />
-						<span>Front</span>
-					</label>
-					<label>
-						<input type="radio" name="pmode" value="back" checked={previewMode === 'back'} on:change={() => switchPreviewMode('back')} />
-						<span>Back</span>
-					</label>
-				</div>
-			</div>
-			<div class="pv" bind:this={pvEl}>
-				<CardPreview
-					mode={previewMode}
-					card={previewCard}
-					{cardW}
-					{cardH}
-					{nameBandHeight}
-					{nameSize}
-					showCrop={false}
-					{fitMode}
-					{useParchment}
-					{parchmentIntensity}
-					{mookUrl}
-					{coverUrl}
-					bind:el={previewCardEl}
-				/>
-			</div>
-			<div class="muted">Preview only — click "Add Card" to save.</div>
-		</div>
-
 		<div class="section-header">
 			<h2>Cards in project</h2>
 			{#key cards.length}
@@ -520,7 +302,7 @@
 			{#if cards.length === 0}
 				<div class="empty-state" in:fly={{ y: 6, duration: 200, easing: cubicOut }}>
 					<div class="empty-icon">🃏</div>
-					No cards yet — add the first one above.
+					No cards yet — click "Add Card" to begin.
 				</div>
 			{/if}
 
@@ -533,9 +315,16 @@
 					<img src={c.img} alt="" class="card-thumb" />
 					<div class="meta">
 						<div class="title" style="font-family:'Alegreya SC', serif">{c.name}</div>
-						<div class="sub">{c.desc ? truncate(c.desc, 72) : 'Back: fantasy cover'}</div>
+						<div class="sub">{c.desc ? truncatePlain(c.desc, 72) : 'Back: fantasy cover'}</div>
 					</div>
-					<button class="btn" on:click={() => removeCard(c.id)}>Remove</button>
+					<div class="item-actions">
+						<button class="btn-icon edit-btn" title="Edit card" on:click={() => openDialog(c)}>
+							<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13l-3 1 1-3 8.5-8.5z"/>
+							</svg>
+						</button>
+						<button class="btn remove-btn" on:click={() => removeCard(c.id)}>Remove</button>
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -683,70 +472,6 @@
 		.leftcol, .rightcol { animation: none; }
 	}
 
-	/* Preview panel */
-	.preview {
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: var(--surface);
-		padding: 14px;
-		box-shadow: var(--shadow-md);
-	}
-	.head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 10px;
-	}
-	.head h3 {
-		margin: 0;
-		font-size: 11px;
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--gold);
-	}
-	.switch {
-		display: flex;
-		gap: 4px;
-		background: var(--bg-mid);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border);
-	}
-	.switch label {
-		display: flex;
-		align-items: center;
-		cursor: pointer;
-	}
-	.switch input[type='radio'] {
-		display: none;
-	}
-	.switch label span {
-		padding: 4px 12px;
-		font-size: 12px;
-		font-weight: 500;
-		border-radius: 5px;
-		color: var(--text-muted);
-		transition: all 0.15s;
-		cursor: pointer;
-		user-select: none;
-	}
-	.switch input[type='radio']:checked + span {
-		background: var(--surface-2);
-		color: var(--gold);
-		box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-	}
-	.pv {
-		display: flex;
-		justify-content: center;
-		padding: 8px 0;
-	}
-	.muted {
-		color: var(--text-muted);
-		font-size: 12px;
-		margin: 4px 0;
-	}
-
 	/* Card list section */
 	.section-header {
 		display: flex;
@@ -832,6 +557,41 @@
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--border-2);
 		flex-shrink: 0;
+		transition: border-color 0.15s, opacity 0.15s;
+	}
+	.item:hover .card-thumb {
+		border-color: rgba(201, 168, 76, 0.5);
+		opacity: 1;
+	}
+	.item-actions {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
+	}
+	.btn-icon {
+		border: 1px solid var(--border);
+		background: transparent;
+		color: var(--text-muted);
+		border-radius: var(--radius-sm);
+		width: 30px;
+		height: 30px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		flex-shrink: 0;
+		transition: all 0.15s;
+		padding: 0;
+	}
+	.btn-icon:hover {
+		background: var(--surface-2);
+		border-color: var(--gold);
+		color: var(--gold);
+	}
+	.btn-icon:focus-visible {
+		outline: 2px solid var(--gold);
+		outline-offset: 2px;
 	}
 	.btn {
 		border: 1px solid var(--border-2);
@@ -846,9 +606,9 @@
 		transition: all 0.15s;
 		flex-shrink: 0;
 	}
-	.btn:hover {
-		background: rgba(224,82,82,0.12);
-		border-color: rgba(224,82,82,0.4);
+	.remove-btn:hover {
+		background: rgba(224, 82, 82, 0.12);
+		border-color: rgba(224, 82, 82, 0.4);
 		color: #e05252;
 	}
 	.btn:focus-visible {
