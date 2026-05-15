@@ -96,52 +96,70 @@
     dispatch('blur');
   }
 
+  // Convert clipboard HTML → clean markup with only <strong>/<em>/<u>/<br>
+  // Uses DOMParser so the full HTML structure (including <body>) is handled correctly,
+  // and detects formatting via both semantic tags AND inline styles (Word, Google Docs, etc.)
   function sanitizeHtml(raw: string): string {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = raw;
+    const doc = new DOMParser().parseFromString(raw, 'text/html');
 
-    const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'P', 'BR', 'DIV', 'SPAN']);
-    const ALLOWED_SPAN_STYLES = ['font-weight', 'font-style', 'text-decoration'];
+    const BLOCK = new Set(['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'TR', 'TD', 'TH']);
 
-    function walk(node: Node): Node | null {
-      if (node.nodeType === Node.TEXT_NODE) return node.cloneNode();
-      if (node.nodeType !== Node.ELEMENT_NODE) return null;
-      const el = node as Element;
-      const tag = el.tagName;
-
-      const children: Node[] = [];
-      el.childNodes.forEach((child) => {
-        const c = walk(child);
-        if (c) children.push(c);
-      });
-
-      if (!ALLOWED.has(tag)) {
-        // Unwrap — keep text children
-        const frag = document.createDocumentFragment();
-        children.forEach((c) => frag.appendChild(c));
-        return frag;
-      }
-
-      const out = document.createElement(tag.toLowerCase());
-      if (tag === 'SPAN') {
-        const style = el.getAttribute('style') ?? '';
-        const filtered = style
-          .split(';')
-          .map((s) => s.trim())
-          .filter((s) => ALLOWED_SPAN_STYLES.some((p) => s.startsWith(p)))
-          .join('; ');
-        if (filtered) out.setAttribute('style', filtered);
-      }
-      children.forEach((c) => out.appendChild(c));
-      return out;
+    function escapeText(s: string) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    const out = document.createElement('div');
-    tmp.childNodes.forEach((child) => {
-      const c = walk(child);
-      if (c) out.appendChild(c);
-    });
-    return out.innerHTML;
+    function walk(node: Node): string {
+      if (node.nodeType === Node.TEXT_NODE) return escapeText(node.textContent ?? '');
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+      const el = node as HTMLElement;
+      const tag = el.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'HEAD') return '';
+
+      const inner = Array.from(el.childNodes).map(walk).join('');
+
+      const style = el.style ?? {};
+      const fw = style.fontWeight ?? '';
+      const fs = style.fontStyle ?? '';
+      const td = (style.textDecoration ?? '') + (style.textDecorationLine ?? '');
+
+      const bold = tag === 'B' || tag === 'STRONG' || fw === 'bold' || fw === 'bolder' || parseInt(fw) >= 600;
+      const italic = tag === 'I' || tag === 'EM' || fs === 'italic' || fs === 'oblique';
+      const underline = tag === 'U' || td.includes('underline');
+
+      let result = inner;
+      if (underline) result = `<u>${result}</u>`;
+      if (italic)    result = `<em>${result}</em>`;
+      if (bold)      result = `<strong>${result}</strong>`;
+
+      if (BLOCK.has(tag) && inner.trim()) result += '<br>';
+
+      return result;
+    }
+
+    const html = Array.from(doc.body.childNodes).map(walk).join('');
+    // Collapse runs of <br> at the very end
+    return html.replace(/(<br\s*\/?>)+$/, '');
+  }
+
+  function insertHtmlAtCursor(html: string) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const frag = document.createDocumentFragment();
+    let last: Node | undefined;
+    while (tmp.firstChild) { last = tmp.firstChild; frag.appendChild(last); }
+    range.insertNode(frag);
+    if (last) {
+      const r = document.createRange();
+      r.setStartAfter(last);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
   }
 
   function handlePaste(e: ClipboardEvent) {
@@ -153,16 +171,13 @@
     const htmlData = e.clipboardData?.getData('text/html') ?? '';
     if (htmlData) {
       const sanitized = sanitizeHtml(htmlData);
-      // Check plain-text length of sanitized content
       const tmpCheck = document.createElement('div');
       tmpCheck.innerHTML = sanitized;
       const plainLen = (tmpCheck.textContent ?? '').length;
       if (plainLen <= remaining) {
-        document.execCommand('insertHTML', false, sanitized);
+        insertHtmlAtCursor(sanitized);
       } else {
-        // Fallback: insert plain text truncated
-        const plain = (tmpCheck.textContent ?? '').slice(0, remaining);
-        document.execCommand('insertText', false, plain);
+        document.execCommand('insertText', false, (tmpCheck.textContent ?? '').slice(0, remaining));
       }
     } else {
       const text = e.clipboardData?.getData('text/plain') ?? '';
@@ -170,6 +185,14 @@
       document.execCommand('insertText', false, text.slice(0, remaining));
     }
     handleInput();
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    const k = e.key.toLowerCase();
+    if (k === 'b') { e.preventDefault(); exec('bold'); }
+    else if (k === 'i') { e.preventDefault(); exec('italic'); }
+    else if (k === 'u') { e.preventDefault(); exec('underline'); }
   }
 
   onMount(async () => {
@@ -297,6 +320,7 @@
     on:focus={handleFocus}
     on:blur={handleBlur}
     on:paste={handlePaste}
+    on:keydown={handleKeydown}
   ></div>
 
 </div>
