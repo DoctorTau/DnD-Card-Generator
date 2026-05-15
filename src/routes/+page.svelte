@@ -124,7 +124,14 @@
 		return `${n}mm`;
 	}
 	function limitDesc() {
-		if (desc.length > DESC_LIMIT) desc = desc.slice(0, DESC_LIMIT);
+		// measure plain-text length, not HTML length
+		const tmp = document.createElement('div');
+		tmp.innerHTML = desc;
+		if ((tmp.textContent ?? '').length > DESC_LIMIT) {
+			// truncate: keep the HTML but signal back — editor enforces the limit itself
+			// just clamp the raw string as fallback
+			desc = desc.slice(0, DESC_LIMIT * 6); // rough HTML budget
+		}
 	}
 
 	// ---------- Parchment & Fantasy cover ----------
@@ -383,6 +390,7 @@
 	onRemoveImage={() => (imageDataUrl = null)}
 	onLimitDesc={limitDesc}
 	onHandleFile={handleFile}
+	on:descFocus={() => (previewMode = 'back')}
 />
 
 <!-- WORKSPACE -->
@@ -421,7 +429,7 @@
 
 		<!-- Printable region follows -->
 
-		<!-- FRONT SHEETS -->
+		<!-- SHEETS: interleaved front/back so PDF page order is front1,back1,front2,back2,… -->
 		{#each pagesFront as page, idx (idx)}
 			<Sheet
 				mode="front"
@@ -442,14 +450,10 @@
 				{mookUrl}
 				{coverUrl}
 			/>
-		{/each}
-
-		<!-- BACK SHEETS -->
-		{#if generateBacks && cards.length > 0}
-			{#each pagesBack as page, idx (idx)}
+			{#if generateBacks && cards.length > 0}
 				<Sheet
 					mode="back"
-					cards={page}
+					cards={pagesBack[idx]}
 					{cardW}
 					{cardH}
 					{gap}
@@ -466,8 +470,8 @@
 					{mookUrl}
 					{coverUrl}
 				/>
-			{/each}
-		{/if}
+			{/if}
+		{/each}
 	</div>
 
 	<aside class="rightcol">

@@ -52,7 +52,7 @@
 					<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
 					<div class="hr"></div>
 					<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
-						{card.desc}
+						{@html card.desc}
 					</div>
 				</div>
 			{:else}
@@ -157,5 +157,12 @@
 		line-height: 1.3;
 		color: #1f2937;
 		overflow: hidden;
+		word-break: break-word;
+		overflow-wrap: break-word;
 	}
+	.desc :global(b), .desc :global(strong) { font-weight: 700; }
+	.desc :global(i), .desc :global(em) { font-style: italic; }
+	.desc :global(u) { text-decoration: underline; }
+	.desc :global(p) { margin: 0 0 0.3em 0; }
+	.desc :global(div) { margin: 0; }
 </style>
