@@ -22,28 +22,92 @@
 	export let autoRemoveOnAdd = true;
 	export let sheetPaddingX = 0;
 	export let sheetPaddingY = 0;
+	export let orientation: 'portrait' | 'landscape' = 'portrait';
 
 	function clamp(v: number, lo: number, hi: number) {
 		return Math.min(hi, Math.max(lo, v));
 	}
+
+	// Standard poker-card aspect (width / height in portrait).
+	const POKER = 63.5 / 88.9;
+	const A4W = 210;
+	const A4H = 297;
+	const MARGIN = 6.5; // mm outer margin, kept consistent across grids
+
+	$: gridPreset = cols === 2 && rows === 2 ? '2x2' : cols === 3 && rows === 3 ? '3x3' : 'custom';
+
+	// Resize the cards to fill the A4 page for the given grid/orientation,
+	// preserving the poker-card aspect so the margins stay symmetric.
+	function fitCards(c = cols, r = rows, g = gap) {
+		const aspect = POKER; // width / height — cards stay vertical on the page
+		const availW = A4W - 2 * MARGIN - (c - 1) * g;
+		const availH = A4H - 2 * MARGIN - (r - 1) * g;
+		const w = Math.min(availW / c, (availH / r) * aspect);
+		cardW = Math.round(w * 10) / 10;
+		cardH = Math.round((w / aspect) * 10) / 10;
+	}
+
+	function setGrid(c: number, r: number) {
+		cols = c;
+		rows = r;
+		fitCards(c, r);
+	}
+
+	function setOrientation(o: 'portrait' | 'landscape') {
+		orientation = o;
+	}
 </script>
 
 <div class="layout-panel">
+	<div class="presets">
+		<div class="seg-group">
+			<span class="seg-label">Grid</span>
+			<div class="seg" role="group" aria-label="Grid layout">
+				<button
+					type="button"
+					class:active={gridPreset === '2x2'}
+					on:click={() => setGrid(2, 2)}>2 × 2</button
+				>
+				<button
+					type="button"
+					class:active={gridPreset === '3x3'}
+					on:click={() => setGrid(3, 3)}>3 × 3</button
+				>
+			</div>
+		</div>
+
+		<div class="seg-group">
+			<span class="seg-label">Orientation</span>
+			<div class="seg" role="group" aria-label="Card orientation">
+				<button
+					type="button"
+					class:active={orientation === 'portrait'}
+					on:click={() => setOrientation('portrait')}>Portrait</button
+				>
+				<button
+					type="button"
+					class:active={orientation === 'landscape'}
+					on:click={() => setOrientation('landscape')}>Landscape</button
+				>
+			</div>
+		</div>
+	</div>
+
 	<div class="layout">
 		<NumberField
 			label="Card width (mm)"
 			value={cardW}
-			setValue={(v) => (cardW = clamp(v, 40, 80))}
+			setValue={(v) => (cardW = clamp(v, 40, 180))}
 			min={40}
-			max={80}
+			max={180}
 		/>
 
 		<NumberField
 			label="Card height (mm)"
 			value={cardH}
-			setValue={(v) => (cardH = clamp(v, 60, 110))}
+			setValue={(v) => (cardH = clamp(v, 60, 180))}
 			min={60}
-			max={110}
+			max={180}
 		/>
 
 		<NumberField
@@ -158,6 +222,61 @@
 		box-shadow: var(--shadow-md);
 		display: block;
 	}
+	.presets {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 20px;
+		padding-bottom: 14px;
+		margin-bottom: 14px;
+		border-bottom: 1px solid var(--border);
+	}
+	.seg-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.seg-label {
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.seg {
+		display: inline-flex;
+		border: 1px solid var(--border-2);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+		background: var(--bg-mid);
+	}
+	.seg button {
+		appearance: none;
+		border: none;
+		background: transparent;
+		color: var(--text-muted);
+		padding: 8px 16px;
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+	}
+	.seg button + button {
+		border-left: 1px solid var(--border-2);
+	}
+	.seg button:hover {
+		color: var(--text);
+		background: var(--surface-2);
+	}
+	.seg button.active {
+		background: var(--gold-dim);
+		color: var(--gold);
+		font-weight: 600;
+	}
+	.seg button:focus-visible {
+		outline: 2px solid var(--gold);
+		outline-offset: -2px;
+	}
+
 	.layout {
 		display: flex;
 		flex-wrap: wrap;

@@ -18,10 +18,18 @@
 	export let parchmentIntensity: number;
 	export let mookUrl: string;
 	export let coverUrl: string;
+	export let orientation: 'portrait' | 'landscape' = 'portrait';
 
 	$: hasImg = Boolean(card?.img && card.img.trim());
 	$: isFront = mode === 'front';
 	$: isBlank = Boolean(card?.id && card.id.startsWith('blank-'));
+
+	// In landscape, the content frame is rotated 90° inside the (still vertical)
+	// card, so its box is sized to the card's height × width before rotating.
+	$: contentStyle =
+		orientation === 'landscape'
+			? `width:${mm(cardH)};height:${mm(cardW)};left:50%;top:50%;transform:translate(-50%,-50%) rotate(90deg);`
+			: 'inset:0;';
 </script>
 
 <div class="cell">
@@ -35,29 +43,31 @@
 				<div class="parch" style="background:{parchmentCSS(parchmentIntensity)}"></div>
 			{/if}
 
-			{#if isFront}
-				{#if hasImg}
-					<img class="art" src={card.img} alt="" style="object-fit:{fitMode}" />
-				{/if}
-				<div
-					class="band"
-					style="height:{mm(nameBandHeight)}; background:{hasImg
-						? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
-						: 'rgba(0,0,0,.06)'}"
-				>
-					<div class="title" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
-				</div>
-			{:else if card.desc && card.desc.length > 0}
-				<div class="back">
-					<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
-					<div class="hr"></div>
-					<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
-						{@html card.desc}
+			<div class="content" style={contentStyle}>
+				{#if isFront}
+					{#if hasImg}
+						<img class="art" src={card.img} alt="" style="object-fit:{fitMode}" />
+					{/if}
+					<div
+						class="band"
+						style="height:{mm(nameBandHeight)}; background:{hasImg
+							? 'linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0))'
+							: 'rgba(0,0,0,.06)'}"
+					>
+						<div class="title" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
 					</div>
-				</div>
-			{:else}
-				<FantasyCover {coverUrl} name={card.name} />
-			{/if}
+				{:else if card.desc && card.desc.length > 0}
+					<div class="back">
+						<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
+						<div class="hr"></div>
+						<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
+							{@html card.desc}
+						</div>
+					</div>
+				{:else}
+					<FantasyCover {coverUrl} name={card.name} />
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>
@@ -105,6 +115,10 @@
 	.parch {
 		position: absolute;
 		inset: 0;
+	}
+	.content {
+		position: absolute;
+		overflow: hidden;
 	}
 	.art {
 		position: absolute;

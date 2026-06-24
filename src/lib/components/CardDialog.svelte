@@ -5,6 +5,7 @@
 	import DropZone from '$lib/components/common/DropZone.svelte';
 	import RichTextEditor from '$lib/components/RichTextEditor.svelte';
 	import CardPreview from '$lib/components/CardPreview.svelte';
+	import ImageCropper from '$lib/components/ImageCropper.svelte';
 	import type { Card } from '$lib/components/CardCell.svelte';
 
 	export let open = false;
@@ -20,6 +21,7 @@
 	export let parchmentIntensity = 0.35;
 	export let mookUrl = '';
 	export let coverUrl = '';
+	export let orientation: 'portrait' | 'landscape' = 'portrait';
 
 	// BG removal (passed through for handleFile)
 	export let removeBgEnabled = false;
@@ -33,13 +35,16 @@
 
 	let name = '';
 	let desc = '';
-	let imgDataUrl: string | null = null;
+	let rawImg: string | null = null; // uncropped source for the cropper
+	let imgDataUrl: string | null = null; // cropped result used by preview / save
 	let previewMode: 'front' | 'back' = 'front';
 	let previewCardEl: HTMLElement | undefined;
 	let pvEl: HTMLElement | undefined;
 	let nameInputEl: HTMLInputElement | undefined;
 
 	$: isEdit = card !== null;
+	$: isLandscape = orientation === 'landscape';
+	$: cropAspect = isLandscape ? cardH / cardW : cardW / cardH;
 	$: canSave = name.trim().length > 0 && imgDataUrl !== null;
 	$: previewCard = {
 		id: card?.id ?? 'preview',
@@ -52,6 +57,7 @@
 	$: if (open) {
 		name = card?.name ?? '';
 		desc = card?.desc ?? '';
+		rawImg = card?.img ?? null;
 		imgDataUrl = card?.img ?? null;
 		previewMode = 'front';
 	}
@@ -118,7 +124,8 @@
 	async function handleFile(file: File) {
 		let dataUrl = await fileToDataUrl(file);
 		if (removeBgEnabled) dataUrl = await chromaKey(dataUrl, bgColor, tolerance);
-		imgDataUrl = dataUrl;
+		rawImg = dataUrl;
+		imgDataUrl = dataUrl; // replaced by the cropper's first emit
 	}
 
 	function handleCancel() {
@@ -166,6 +173,7 @@
 		<!-- Panel -->
 		<div
 			class="panel"
+			class:landscape={isLandscape}
 			transition:scale={{ duration: 220, easing: cubicOut, start: 0.94 }}
 		>
 			<!-- Header -->
@@ -207,15 +215,23 @@
 					<!-- Artwork -->
 					<div class="field-group">
 						<span class="field-label" aria-hidden="true">Artwork</span>
-						{#if imgDataUrl}
-							<div class="thumb-row">
-								<img src={imgDataUrl} alt="Card artwork" class="art-thumb" />
-								<div class="thumb-meta">
-									<span class="thumb-hint">Image loaded</span>
-									<button class="link-btn" type="button" on:click={() => (imgDataUrl = null)}>
-										Replace
-									</button>
-								</div>
+						{#if rawImg}
+							<div class="crop-wrap">
+								<ImageCropper
+									src={rawImg}
+									aspect={cropAspect}
+									on:crop={(e) => (imgDataUrl = e.detail)}
+								/>
+								<button
+									class="link-btn replace"
+									type="button"
+									on:click={() => {
+										rawImg = null;
+										imgDataUrl = null;
+									}}
+								>
+									Replace image
+								</button>
 							</div>
 						{:else}
 							<DropZone
@@ -273,6 +289,8 @@
 							{parchmentIntensity}
 							{mookUrl}
 							{coverUrl}
+							{orientation}
+							maxW={isLandscape ? 340 : 200}
 							bind:el={previewCardEl}
 						/>
 					</div>
@@ -330,6 +348,7 @@
 		width: 100%;
 		max-width: 760px;
 		max-height: 90vh;
+		transition: max-width 0.22s cubic-bezier(0.23, 1, 0.32, 1);
 		display: flex;
 		flex-direction: column;
 		box-shadow:
@@ -337,6 +356,14 @@
 			0 0 0 1px rgba(201, 168, 76, 0.08),
 			inset 0 1px 0 rgba(255, 255, 255, 0.04);
 		overflow: hidden;
+	}
+
+	/* Wider dialog + preview column when the card is landscape */
+	.panel.landscape {
+		max-width: 920px;
+	}
+	.panel.landscape .dialog-body {
+		grid-template-columns: 1fr 380px;
 	}
 
 	/* ── Header ── */
@@ -463,33 +490,6 @@
 		box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1);
 	}
 
-	/* Artwork thumb */
-	.thumb-row {
-		display: flex;
-		align-items: center;
-		gap: 14px;
-		padding: 10px 12px;
-		border: 1px solid var(--border-2);
-		border-radius: var(--radius-sm);
-		background: var(--surface-2);
-	}
-	.art-thumb {
-		height: 52px;
-		width: auto;
-		max-width: 80px;
-		object-fit: cover;
-		border-radius: 5px;
-		border: 1px solid rgba(201, 168, 76, 0.4);
-	}
-	.thumb-meta {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.thumb-hint {
-		font-size: 12px;
-		color: var(--text-muted);
-	}
 	.link-btn {
 		background: none;
 		border: none;
@@ -502,6 +502,21 @@
 		font-family: inherit;
 	}
 	.link-btn:hover { color: var(--gold-bright); }
+
+	/* Crop editor */
+	.crop-wrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		padding: 12px;
+		border: 1px solid var(--border-2);
+		border-radius: var(--radius-sm);
+		background: var(--surface-2);
+	}
+	.link-btn.replace {
+		align-self: center;
+	}
 
 	/* ── Preview column ── */
 	.preview-col {

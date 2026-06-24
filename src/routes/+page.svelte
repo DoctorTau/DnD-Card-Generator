@@ -28,6 +28,7 @@
 	let nameSize = 12; // pt
 	let nameBandHeight = 16; // mm
 	let fitMode: 'cover' | 'contain' = 'cover';
+	let orientation: 'portrait' | 'landscape' = 'portrait';
 	let generateBacks = true;
 
 	// Visuals
@@ -200,6 +201,7 @@
 	{nameBandHeight}
 	{nameSize}
 	{fitMode}
+	{orientation}
 	{useParchment}
 	{parchmentIntensity}
 	{mookUrl}
@@ -237,6 +239,7 @@
 					bind:bgColor
 					bind:tolerance
 					bind:autoRemoveOnAdd
+					bind:orientation
 					sheetPaddingX={sheetPadding.padX}
 					sheetPaddingY={sheetPadding.padY}
 				/>
@@ -265,6 +268,7 @@
 				{parchmentIntensity}
 				{mookUrl}
 				{coverUrl}
+				{orientation}
 			/>
 			{#if generateBacks && cards.length > 0}
 				<Sheet

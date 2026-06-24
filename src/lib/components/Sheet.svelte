@@ -18,6 +18,7 @@
 	export let parchmentIntensity: number;
 	export let mookUrl: string;
 	export let coverUrl: string;
+	export let orientation: 'portrait' | 'landscape' = 'portrait';
 
 	const total = () => rows * cols;
 	$: filled = cards.slice(0, total());
@@ -70,6 +71,7 @@
 					{parchmentIntensity}
 					{mookUrl}
 					{coverUrl}
+					{orientation}
 				/>
 			{/each}
 		</div>
