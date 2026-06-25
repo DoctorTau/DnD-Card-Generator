@@ -9,6 +9,7 @@
 	export let rows = 3;
 	export let nameBandHeight = 16;
 	export let nameSize = 12;
+	export let descSize = 10;
 	export let showCrop = true;
 	export let fitMode: 'cover' | 'contain' = 'cover';
 	export let generateBacks = true;
@@ -140,6 +141,22 @@
 			setValue={(v) => (nameBandHeight = clamp(v, 8, 30))}
 			min={8}
 			max={30}
+		/>
+
+		<NumberField
+			label="Title size (pt)"
+			value={nameSize}
+			setValue={(v) => (nameSize = clamp(v, 6, 36))}
+			min={6}
+			max={36}
+		/>
+
+		<NumberField
+			label="Description size (pt)"
+			value={descSize}
+			setValue={(v) => (descSize = clamp(v, 5, 24))}
+			min={5}
+			max={24}
 		/>
 
 		<label class="check"

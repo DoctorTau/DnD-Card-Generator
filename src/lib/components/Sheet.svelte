@@ -10,6 +10,7 @@
 	export let rows: number;
 	export let nameBandHeight: number;
 	export let nameSize: number;
+	export let descSize: number = 10;
 	export let paddingX: number;
 	export let paddingY: number;
 	export let showCrop: boolean;
@@ -65,6 +66,7 @@
 					{cardH}
 					{nameBandHeight}
 					{nameSize}
+					{descSize}
 					{showCrop}
 					{fitMode}
 					{useParchment}
@@ -72,6 +74,7 @@
 					{mookUrl}
 					{coverUrl}
 					{orientation}
+					duplexBack={mode === 'back'}
 				/>
 			{/each}
 		</div>

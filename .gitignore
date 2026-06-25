@@ -22,9 +22,12 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Claude 
+# Claude
 .swarm
 .claude
 .claude-flow
 .mcp.json
+.agents
+.codex
+AGENTS.md
 

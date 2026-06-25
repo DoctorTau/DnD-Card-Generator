@@ -26,6 +26,7 @@
 	let showLayout = false;
 	let showCrop = true;
 	let nameSize = 12; // pt
+	let descSize = 10; // pt
 	let nameBandHeight = 16; // mm
 	let fitMode: 'cover' | 'contain' = 'cover';
 	let orientation: 'portrait' | 'landscape' = 'portrait';
@@ -200,6 +201,7 @@
 	{cardH}
 	{nameBandHeight}
 	{nameSize}
+	{descSize}
 	{fitMode}
 	{orientation}
 	{useParchment}
@@ -228,6 +230,7 @@
 					bind:rows
 					bind:nameBandHeight
 					bind:nameSize
+					bind:descSize
 					bind:showCrop
 					bind:fitMode
 					bind:generateBacks
@@ -260,6 +263,7 @@
 				{rows}
 				{nameBandHeight}
 				{nameSize}
+				{descSize}
 				paddingX={sheetPadding.padX}
 				paddingY={sheetPadding.padY}
 				{showCrop}
@@ -281,6 +285,7 @@
 					{rows}
 					{nameBandHeight}
 					{nameSize}
+					{descSize}
 					paddingX={sheetPadding.padX}
 					paddingY={sheetPadding.padY}
 					{showCrop}
@@ -289,6 +294,7 @@
 					{parchmentIntensity}
 					{mookUrl}
 					{coverUrl}
+					{orientation}
 				/>
 			{/if}
 		{/each}

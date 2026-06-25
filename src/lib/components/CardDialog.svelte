@@ -16,6 +16,7 @@
 	export let cardH: number;
 	export let nameBandHeight: number;
 	export let nameSize: number;
+	export let descSize: number = 10;
 	export let fitMode: 'cover' | 'contain' = 'cover';
 	export let useParchment = true;
 	export let parchmentIntensity = 0.35;
@@ -283,6 +284,7 @@
 							{cardH}
 							{nameBandHeight}
 							{nameSize}
+							{descSize}
 							showCrop={false}
 							{fitMode}
 							{useParchment}

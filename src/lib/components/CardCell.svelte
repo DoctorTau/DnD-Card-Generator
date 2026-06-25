@@ -12,6 +12,7 @@
 	export let cardH: number;
 	export let nameBandHeight: number;
 	export let nameSize: number;
+	export let descSize: number = 10;
 	export let showCrop: boolean;
 	export let fitMode: 'cover' | 'contain';
 	export let useParchment: boolean;
@@ -19,6 +20,10 @@
 	export let mookUrl: string;
 	export let coverUrl: string;
 	export let orientation: 'portrait' | 'landscape' = 'portrait';
+	// On a real print sheet, the back must rotate the opposite way (270°) so it
+	// aligns with the front after duplex flipping. The dialog preview leaves
+	// this false so the back stays upright/readable while editing.
+	export let duplexBack = false;
 
 	$: hasImg = Boolean(card?.img && card.img.trim());
 	$: isFront = mode === 'front';
@@ -26,9 +31,16 @@
 
 	// In landscape, the content frame is rotated 90° inside the (still vertical)
 	// card, so its box is sized to the card's height × width before rotating.
+	// Use a top-left origin + explicit translate (instead of the 50%/50%
+	// centering trick) because html2canvas mis-renders the percentage-translate
+	// + rotate combo during PDF export.
+	// The duplex back rotates -90° (270°) so it prints correctly on the reverse.
+	$: rotateBack = !isFront && duplexBack;
 	$: contentStyle =
 		orientation === 'landscape'
-			? `width:${mm(cardH)};height:${mm(cardW)};left:50%;top:50%;transform:translate(-50%,-50%) rotate(90deg);`
+			? rotateBack
+				? `width:${mm(cardH)};height:${mm(cardW)};left:0;top:0;transform-origin:top left;transform:translate(0,${mm(cardH)}) rotate(-90deg);`
+				: `width:${mm(cardH)};height:${mm(cardW)};left:0;top:0;transform-origin:top left;transform:translate(${mm(cardW)},0) rotate(90deg);`
 			: 'inset:0;';
 </script>
 
@@ -60,7 +72,10 @@
 					<div class="back">
 						<div class="backTitle" style="font-size:{nameSize}pt">{card.name || '(empty)'}</div>
 						<div class="hr"></div>
-						<div class="desc" style="font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}">
+						<div
+							class="desc"
+							style="font-size:{descSize}pt; font-family:{mookUrl ? `'Mookmania', serif` : 'serif'}"
+						>
 							{@html card.desc}
 						</div>
 					</div>
@@ -118,7 +133,9 @@
 	}
 	.content {
 		position: absolute;
-		overflow: hidden;
+		/* No overflow:hidden here — the rotated frame fills the card exactly and
+		   .card already clips to the rounded bounds. html2canvas mis-clips a
+		   transformed element that has its own overflow:hidden. */
 	}
 	.art {
 		position: absolute;
